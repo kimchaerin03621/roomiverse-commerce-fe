@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShoppingBag, CreditCard, Lock, Sparkles, ExternalLink, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, ShoppingBag, CreditCard, Lock, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function ProductModal({ product, onClose }) {

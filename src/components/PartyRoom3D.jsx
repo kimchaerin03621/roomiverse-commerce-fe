@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import Spline from '@splinetool/react-spline';
-import { Disc, Package, Sparkles, Box, Info, ExternalLink, RefreshCw } from 'lucide-react';
+import { Disc, Package, Sparkles, Box, ExternalLink } from 'lucide-react';
 
 export default function PartyRoom3D({ onSelectProduct, onBackToIntro }) {
   const [splineLoaded, setSplineLoaded] = useState(false);
-  const [activeItem, setActiveItem] = useState(null);
 
   // Interactive 3D Goods List (Used for Spline fallback or overlay interactive triggers)
   const interactiveGoods = [
@@ -103,8 +102,6 @@ export default function PartyRoom3D({ onSelectProduct, onBackToIntro }) {
               <div
                 key={item.id}
                 onClick={() => onSelectProduct(item)}
-                onMouseEnter={() => setActiveItem(item.id)}
-                onMouseLeave={() => setActiveItem(null)}
                 className="pointer-events-auto cursor-pointer group glass-panel-glow p-4 rounded-2xl border border-white/10 hover:border-purple-500/60 transition-all duration-300 transform hover:-translate-y-2"
               >
                 <div className="flex items-center justify-between mb-2">
