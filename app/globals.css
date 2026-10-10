@@ -1,0 +1,110 @@
+/*
+ * Party-name faces from Noonnu (noonnu.cc). Each tries the local copy in /public/fonts first (kept on the exhibition
+ * laptop, NOT committed: some licences forbid redistributing the font files), then Noonnu's official web-font address.
+ *  - House: 리아체 (롯데GRS). Web/embedding use is allowed; brand/product names, logos and edits are not.
+ *  - Themed: 가비아 던체 (가비아).
+ *  - After: Cafe24 ClassicType (Cafe24, OFL).
+ * Do not edit, subset or resell the files.
+ */
+@font-face {
+  font-family: "Ria";
+  src: url("/fonts/RiaSans-ExtraBold.woff2") format("woff2"), url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gabia Dunn";
+  src: url("/fonts/GabiaDunn-Regular.woff2") format("woff2"), url("https://cdn.jsdelivr.net/gh/projectnoonnu/2510-1@1.0/GabiaDunn-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cafe24 ClassicType";
+  src: url("/fonts/Cafe24ClassicType-Regular.woff2") format("woff2"), url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2210-2@1.0/Cafe24ClassicType-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --font-house: "Ria";
+  --font-themed: "Gabia Dunn";
+  --font-after: "Cafe24 ClassicType";
+}
+
+:root {
+  /* ROOMi brand palette (docs/brand/07-brand-color.png) */
+  --pink: #f71d64;
+  --purple: #c14ed4;
+  --peach: #ffb792;
+  --paper: #f0f0f0;
+  --ink: #111111;
+
+  /* Harbor night, sampled from the approved intro comp */
+  --night: #100b10;
+  --dusk: #3b1c2c;
+
+  --font-ui: var(--font-afacad), "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  --font-text: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--night);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Korean breaks between words, not inside them. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: none;
+}
+
+::selection {
+  background: var(--pink);
+  color: var(--paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 4px;
+}
+
+html {
+  scrollbar-color: var(--purple) var(--night);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

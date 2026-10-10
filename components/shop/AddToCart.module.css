@@ -1,0 +1,45 @@
+.box {
+  display: grid;
+  gap: 28px;
+  margin-top: 12px;
+  padding-top: 28px;
+  border-top: 1.5px solid var(--ink);
+}
+
+.qty {
+  display: inline-grid;
+  grid-template-columns: 48px 56px 48px;
+  align-items: center;
+  border: 1px solid rgb(17 17 17 / 0.22);
+}
+
+.qty button {
+  height: 48px;
+  border: 0;
+  background: #f8f8f8;
+  color: var(--ink);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.qty button:hover {
+  background: #e8e8e8;
+}
+
+.qty output {
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.added {
+  margin: -8px 0 0;
+  font-size: 15px;
+}
+
+.added a {
+  color: var(--pink);
+  font-weight: 700;
+}

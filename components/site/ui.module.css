@@ -1,0 +1,177 @@
+/* Shared form and control vocabulary for the paper pages (Let's Party, Shop, Cart, My). */
+
+.label {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #6b6468;
+}
+
+.error {
+  margin: 8px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #c4004a;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  position: relative;
+}
+
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  min-width: 128px;
+  padding: 0 18px;
+  border: 1px solid rgb(17 17 17 / 0.22);
+  background: #f8f8f8;
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--ease-out),
+    background-color 0.2s var(--ease-out),
+    color 0.2s var(--ease-out);
+}
+
+.choice span:hover {
+  border-color: var(--ink);
+}
+
+.choice input:checked + span {
+  border-color: var(--pink);
+  background: var(--pink);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.choice input:focus-visible + span {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid rgb(17 17 17 / 0.22);
+  border-radius: 0;
+  background: #f8f8f8;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.textarea {
+  min-height: 140px;
+  padding: 14px 16px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #8a8387;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--pink);
+  box-shadow: 0 0 0 1px var(--pink);
+}
+
+.input[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: #c4004a;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 32px;
+  border: 0;
+  background: var(--pink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease-out);
+}
+
+.button:hover {
+  background: #d9084e;
+}
+
+.button:disabled {
+  background: #c9c3c6;
+  cursor: not-allowed;
+}
+
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1.5px solid currentColor;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ghost:hover {
+  color: var(--pink);
+}
+
+.demo {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pink);
+}

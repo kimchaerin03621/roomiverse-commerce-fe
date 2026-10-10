@@ -1,0 +1,10 @@
+{
+  "prompt": "Design a desktop website hero screen, 16:9 landscape (1920x1080), rendered as the web page itself edge to edge (no browser window, no device frame, no mockup). This image IS the whole first viewport; nothing else appears below it.\n\nBrand: ROOMi (ROOMiVERSE), a DJ lifestyle brand: \"any ordinary space becomes your party, anywhere, with anyone\". This is the hero of the \"Meet ROOMi\" brand page. Attached: (1) the two-wordmark graffiti logo \"ROOMi ROOMi\"; (2) the designer's Figma page — keep its hero idea (a crowd/concert photo with the big logo over it and a short brand story).\n\nThe hero contains ONLY:\n1. The site's thin top navigation over the image: logo small at the exact center; left \"MEET ROOMi\" (active, underlined), \"WHAT'S GOING ON\", \"LET'S PARTY\", \"SHOP\"; right \"CART (0)\", \"MY\". Small white uppercase grotesk, no bar.\n2. A full-bleed cinematic party photograph filling the entire screen: a packed, flash-lit house/club party crowd with raised hands, shot from behind the DJ, deep black #111111 shadows with hot pink #F71D64 and violet #C14ED4 stage light, soft haze, film grain. Darkened enough for text to read.\n3. The big two-wordmark graffiti logo \"ROOMi ROOMi\" set LARGE in the center (about 45% of the screen width), filled with a pink-to-violet gradient (#F71D64 to #C14ED4) with a faint glow, \"ROOMiVERSE\" in thin, widely tracked white caps tucked beside it.\n4. Under the logo, a short brand intro in white, centered, two lines at reading size: \"Anyone, anywhere — your own musical universe.\" and in Korean \"어디서 누구와 함께하든, 평범한 공간이 파티가 됩니다.\"\n5. At the bottom center, a small scroll indicator: a thin white chevron with \"SCROLL\" in tiny caps.\n\nNothing else: no buttons, no cards, no About Us. One dominant move: the giant gradient logo over the crowd.",
+  "tool": "ChatGPT image generation (user-run)",
+  "reference": [
+    "public/logo.png",
+    ".impeccable/mocks/meet/figma-reference.png"
+  ],
+  "surface": "Meet ROOMi hero",
+  "seed": "e2a9e3b1"
+}

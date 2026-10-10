@@ -1,0 +1,9 @@
+Recreate the attached crop as a production cutout layer for a 2.5D parallax web page.
+
+Keep the EXACT framing of the attached crop: same aspect ratio (a tall strip about 1:3), the crane leg at the same size, the same position and the same angle inside the frame, cut off at the same edges. Do not zoom out, do not re-center, do not add more of the crane.
+
+Keep only the orange-yellow steel crane leg with its lit platforms, railings, ladders and warm lamps, exactly as in the crop. Remove everything behind it (sea, sky, containers, ground) to genuinely transparent alpha.
+
+Match the crop's color grade: warm orange lamplight on the steel, magenta-pink ambient light from the dusk sky, deep shadows. Photoreal, same lens softness and grain as the crop. No text.
+
+Output: transparent PNG, tall portrait, highest resolution available (at least 660 x 1950).

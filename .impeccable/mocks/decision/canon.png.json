@@ -1,0 +1,7 @@
+{
+  "prompt": "Design a desktop website landing screen, 16:9 landscape (1920x1080), rendered as the web page itself edge to edge (no browser window, no device frame, no mockup).\n\nBrand: ROOMi (ROOMiVERSE), a DJ lifestyle brand. Use the attached image as the logo: a graffiti marker wordmark \"ROOMi\".\n\nStyle: a premium fashion-house e-commerce site in the manner of minimal Korean fashion brand sites: lots of white space, a small thin sans-serif, a centered logo, full-bleed photography.\n\nRegions, in order:\n1. Thin white top navigation bar. The ROOMi logo in black at the exact center. Left: \"Meet ROOMi\", \"What's Going On\", \"Let's Party\", \"Shop\". Right: \"Cart (0)\", \"My\". Tiny black sans, generous letter-spacing.\n2. Full-bleed realistic photograph below the bar: a calm container port at golden hour, stacked containers in muted tones, soft natural light, cinematic depth of field, layered so it could become a parallax scene.\n3. Bottom-left over the photo, small white text: \"ROOMiVERSE\" and \"내 방안의 나만의 우주\", with a tiny underlined link \"Enter →\".\n4. A tiny hot pink #F71D64 dot as the only accent color.\n\nQuiet, restrained, expensive-looking. No fake prices, no extra cards.",
+  "tool": "ChatGPT image generation (user-run)",
+  "reference": "docs/brand/06-logo.png",
+  "surface": "intro (harbor parallax) first viewport",
+  "seed": "958c4080"
+}

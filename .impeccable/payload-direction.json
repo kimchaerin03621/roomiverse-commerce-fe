@@ -1,0 +1,133 @@
+{
+  "title": "ROOMi 비주얼 방향 고르기",
+  "question": "첫 화면(항구 인트로)을 기준으로 ROOMi 전체의 시각 세계를 고릅니다. 추천 방향을 유지하거나, 다른 카드를 고르거나, 다시 뽑으세요.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Mini CD Release",
+      "kicker": "THE ROLL",
+      "lineage": "2000년대 미니 CD 싱글 패키지: 주얼케이스, OBI 띠지, 스크린 인쇄 디스크, 가사 부클릿",
+      "thesis": "ROOMi 전체를 한 장의 발매 음반처럼 다룹니다. 인트로가 커버, 메뉴가 OBI 띠지, 매거진 페이지가 부클릿, 3D Shop은 케이스를 열었을 때 나오는 트레이예요.",
+      "palette": ["#F71D64", "#C14ED4", "#FFB792", "#F0F0F0", "#111111"],
+      "materials": ["반투명 주얼케이스 폴리카보네이트", "스크린 인쇄 디스크 잉크", "OBI 종이 띠지", "코팅 부클릿 용지"],
+      "viewport": "해 질 녘 컨테이너 항구 사진이 커버 아트처럼 화면 전체를 채우고, 그 위에 주얼케이스의 반투명 광택이 얹힙니다. 오른쪽 세로 OBI 띠지에 ROOMi, 트랙리스트 01~06(파티 6종), PLAY 트리거가 들어가요. GNB 정중앙에는 그라피티 로고가 놓입니다.",
+      "risk": "CD를 소품처럼 장식으로만 붙이면 레트로 코스프레가 됩니다. 띠지와 트랙리스트가 실제 메뉴와 기능으로 작동해야 해요.",
+      "raised": [
+        {"from": "challenger-massin", "raise": "글자 크기가 곧 볼륨입니다. 파티 6종의 이름은 각 파티의 소리 크기만큼의 크기로 조판해요(Rave가 가장 크고 Listening이 가장 작게)."},
+        {"from": "challenger-cracktro", "raise": "깊이는 하나의 시계로 움직입니다. 패럴랙스 레이어는 모두 같은 시계를 기준으로, 깊이에 비례한 속도로 흘러요."},
+        {"from": "challenger-segment", "raise": "꺼진 칸도 디자인합니다. 빈 장바구니, 비어 있는 예약 칸 같은 빈 상태를 '고스트 트랙'으로 그려요."}
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "Container Pop-up",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "성수동 컨테이너 팝업 스토어: 비계, 합판, 현수막 천, 개퍼 테이프 라벨, 그라피티 가림막",
+      "thesis": "ROOMi는 어디든 실려 가서 하룻밤 파티 공간으로 열리는 컨테이너 팝업입니다. 사이트 전체가 그 설치 현장이에요.",
+      "palette": ["#111111", "#F71D64", "#C14ED4", "#FFB792", "#F0F0F0"],
+      "materials": ["아연 도금 강판", "합판", "현수막 천", "개퍼 테이프", "스프레이 페인트"],
+      "viewport": "밤의 컨테이너 항구에서 컨테이너 하나만 문틈으로 핑크빛을 흘립니다. 문짝에 스프레이로 쓴 ROOMi 그라피티가 트리거가 되고, GNB는 개퍼 테이프 라벨처럼 붙어 있어요.",
+      "risk": "제가 가장 먼저 떠올린 방향인 만큼 익숙합니다. 한국 브랜드 팝업에서 이미 많이 쓰인 언어라 차별성이 약할 수 있어요.",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-movida",
+      "label": "Scene Magazine Cover",
+      "verdict": "competitive",
+      "lineage": "1980년대 마드리드 언더그라운드 신(scene) 매거진 표지",
+      "thesis": "매 페이지가 플래시를 터뜨려 찍은 파티 잡지 표지입니다. 손으로 쓴 ROOMi 마스트헤드 아래 커버 라인이 비스듬히 흩어져요.",
+      "palette": ["#F71D64", "#C14ED4", "#111111", "#F0F0F0"],
+      "materials": ["싼 형광 잉크 인쇄", "인쇄가 어긋난 판", "플래시 사진"],
+      "viewport": "플래시로 찍은 컨테이너 항구 장면을 과감하게 크롭하고, 손으로 쓴 ROOMi 마스트헤드 아래 메뉴가 각도가 다른 커버 라인으로 흩어집니다.",
+      "case": "손글씨 그라피티 로고와 파티 플래시 사진 문화에 딱 맞아서 타깃 공감은 이깁니다. 다만 흩뿌린 내비게이션 때문에 Shop과 예약에서 명확성이 떨어져요.",
+      "risk": "매거진 페이지와 결제 흐름까지 흩어 놓으면 읽히지 않습니다.",
+      "comp": ".impeccable/mocks/decision/challenger-movida.png",
+      "hero": "https://impeccable.style/worlds/cards/posters-covers-sleeves-movida-scene-magazine-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/posters-covers-sleeves-movida-scene-magazine.webp"
+    },
+    {
+      "id": "challenger-massin",
+      "label": "Massin Stage Page",
+      "verdict": "declined",
+      "lineage": "마생의 타이포그래피 무대 지면",
+      "thesis": "목소리마다 서체를 다르게 주고, 크기가 볼륨을 뜻합니다.",
+      "palette": ["#111111", "#F0F0F0"],
+      "materials": ["흑백 잉크", "스탬프 인쇄"],
+      "viewport": "대사가 지면 위에서 부딪히는 타이포그래피 무대.",
+      "risk": "브랜드와 연결 고리가 약합니다.",
+      "case": "결합이 약해요. ROOMi에는 연극 대사라는 소재가 없습니다.",
+      "kept": "크기 = 볼륨: 파티 이름을 소리 크기만큼의 크기로 조판합니다.",
+      "hero": "https://impeccable.style/worlds/cards/massin-stage-page-hero.webp"
+    },
+    {
+      "id": "challenger-film",
+      "label": "Hand-processed Film",
+      "verdict": "declined",
+      "lineage": "손으로 현상한 16mm 필름",
+      "thesis": "긁힘과 빛샘이 사건의 일부가 되는 필름 스트립.",
+      "palette": ["#1A1A1A", "#9A9A9A", "#E8762B"],
+      "materials": ["유제", "빛샘"],
+      "viewport": "프레임 단위로 진행되는 필름 띠.",
+      "risk": "브랜드 팔레트와 충돌합니다.",
+      "case": "결합이 약해요. 주황 빛샘이 핑크·보라 팔레트와 부딪힙니다.",
+      "kept": "강조색은 지금 활성화된 하나에만 씁니다.",
+      "hero": "https://impeccable.style/worlds/cards/cinema-cinematography-editing-hand-processed-film-bloom-hero.webp"
+    },
+    {
+      "id": "challenger-bazaar",
+      "label": "Moon-shadow Bazaar",
+      "verdict": "declined",
+      "lineage": "그림자를 사고파는 달밤의 시장",
+      "thesis": "모든 상품에 출처 티켓이 붙어 다닙니다.",
+      "palette": ["#141A2E", "#C9A24A", "#E9ECF2"],
+      "materials": ["달빛", "천막"],
+      "viewport": "달빛 아래 늘어선 노점 골목.",
+      "risk": "브랜드 세계와 동떨어져 있습니다.",
+      "case": "결합이 약해요. 초현실 노점은 DJ 라이프스타일 타깃이 공감할 소재가 아닙니다.",
+      "kept": "모든 상품에 고유 카탈로그 번호를 붙입니다(ROOMi-001 등).",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-moon-shadow-bazaar-hero.webp"
+    },
+    {
+      "id": "challenger-segment",
+      "label": "Seven-segment Display",
+      "verdict": "declined",
+      "lineage": "7세그먼트 표시창",
+      "thesis": "꺼진 칸까지 디자인된 한 가지 숫자 마스크.",
+      "palette": ["#0D0D0D", "#FF2A2A", "#2A0A0A"],
+      "materials": ["LED", "무광 검정 패널"],
+      "viewport": "BPM 표시창처럼 칸 단위로 고정된 레이아웃.",
+      "risk": "매거진 페이지를 담기 어렵습니다.",
+      "case": "결합이 약해요. DJ 장비의 표시창과는 통하지만 매거진 페이지를 담지 못합니다.",
+      "kept": "빈 상태도 고스트 칸으로 디자인합니다.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-seven-segment-alarm-clock-hero.webp"
+    },
+    {
+      "id": "challenger-cracktro",
+      "label": "Cracktro Scroller",
+      "verdict": "declined",
+      "lineage": "데모씬 크랙트로 타이틀 화면",
+      "thesis": "깊이가 곧 순위이고, 레이어마다 다른 속도로 흐릅니다.",
+      "palette": ["#000000", "#E8E4D8", "#FFB000"],
+      "materials": ["비트맵 폰트", "먼지 레이어"],
+      "viewport": "검은 화면 위에서 흐르는 비트맵 글자.",
+      "risk": "레트로 게임 느낌으로 흐를 수 있습니다.",
+      "case": "결합이 약해요. 비트맵 폰트는 그라피티 로고와 어울리지 않습니다.",
+      "kept": "패럴랙스는 하나의 시계로, 깊이에 비례해 움직입니다.",
+      "hero": "https://impeccable.style/worlds/cards/operate-c-cracktro-scroller-queue-hero.webp"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "comp", "toggle": true},
+  "canon": true,
+  "canonCard": {
+    "label": "패션 브랜드 표준형",
+    "thesis": "젠틀몬스터·아더에러식 미니멀 커머스에 kidsuper식 실사 3D 룸을 더한 형태입니다.",
+    "palette": ["#FFFFFF", "#111111", "#F71D64"],
+    "materials": ["흰 여백", "풀블리드 사진", "작은 산세리프"],
+    "viewport": "실사풍 항구 패럴랙스 위에 GNB 정중앙 로고와 작은 글씨 메뉴가 놓입니다.",
+    "risk": "레퍼런스 사이트들과 구분되지 않습니다.",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

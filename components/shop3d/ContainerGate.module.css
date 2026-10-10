@@ -1,0 +1,171 @@
+/* ---------- Loading gate: the container doors from the intro stay shut with the pink light leaking through, then swing out toward the viewer ---------- */
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  overflow: hidden;
+  perspective: 1500px;
+  pointer-events: none;
+  /* unmount cue: this fades last, once the doors are gone */
+  transition: opacity 0.2s linear 1.75s;
+}
+
+/* From the intro: the doors fade in over the zoom right after the click. */
+.gate[data-fade] {
+  animation: gateIn 0.4s ease-out both;
+}
+
+@keyframes gateIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.gate[data-open] {
+  opacity: 0;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 56%, var(--pink) 0%, var(--purple) 48%, var(--night) 100%);
+  transition: opacity 1.2s ease 0.35s;
+}
+
+.gate[data-open] .glow {
+  opacity: 0;
+}
+
+.leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(50% - 1px);
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.3) 0 2px, rgb(255 255 255 / 0.05) 2px 4px, transparent 4px 18px),
+    linear-gradient(180deg, #8d1b2a, #6a1220 55%, #470b16);
+  box-shadow: inset 0 0 90px rgb(0 0 0 / 0.55);
+  transition: transform 1.55s cubic-bezier(0.76, 0, 0.24, 1);
+  will-change: transform;
+}
+
+.l {
+  left: 0;
+  transform-origin: 0 50%;
+}
+
+.r {
+  right: 0;
+  transform-origin: 100% 50%;
+}
+
+.gate[data-open] .l {
+  transform: rotateY(-102deg);
+}
+
+.gate[data-open] .r {
+  transform: rotateY(102deg);
+}
+
+/* Locking bars with a handle each, like the real container doors. */
+.bar {
+  position: absolute;
+  top: 3%;
+  bottom: 3%;
+  width: clamp(7px, 1.1vw, 14px);
+  background: linear-gradient(90deg, #231d21, #7a7076 45%, #231d21);
+  box-shadow: 0 0 10px rgb(0 0 0 / 0.5);
+}
+
+.bar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 230%;
+  height: 7%;
+  translate: -50% 0;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #8c8288, #3a3237);
+}
+
+.l .bar:nth-child(1) {
+  left: 14%;
+}
+
+.l .bar:nth-child(2) {
+  left: 62%;
+}
+
+.r .bar:nth-child(1) {
+  right: 62%;
+}
+
+.r .bar:nth-child(2) {
+  right: 14%;
+}
+
+/* The seam between the doors: pink light squeezing out. */
+.seam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  translate: -50% 0;
+  background: #ffd6e6;
+  box-shadow: 0 0 22px 8px var(--pink), 0 0 90px 30px rgb(247 29 100 / 0.5);
+  animation: seam 2.2s ease-in-out infinite;
+  transition: opacity 0.35s ease;
+}
+
+.gate[data-open] .seam {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes seam {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gateLabel {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(36px, 9vh, 90px);
+  z-index: 1;
+  margin: 0;
+  translate: -50% 0;
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.7);
+  transition: opacity 0.3s ease;
+}
+
+.gateLabel span {
+  margin-left: 0.8em;
+  color: var(--peach);
+}
+
+.gate[data-open] .gateLabel {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaf {
+    transition-duration: 0.01s;
+  }
+
+  .seam {
+    animation: none;
+  }
+}

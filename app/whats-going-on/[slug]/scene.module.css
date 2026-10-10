@@ -1,0 +1,478 @@
+.page {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-text);
+  color-scheme: light;
+}
+
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  align-items: end;
+  gap: 16px 48px;
+  padding: calc(72px + clamp(48px, 8vh, 96px)) clamp(20px, 6vw, 112px) clamp(32px, 5vh, 56px);
+}
+
+.no {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(56px, 9vw, 160px);
+  font-weight: 900;
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+/* Same faces as the list page, larger. */
+.title[data-party="house-party"] {
+  font-family: var(--font-house), var(--font-text);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.title[data-party="listening-party"] {
+  font-family: var(--font-listening), serif;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.title[data-party="day-party"] {
+  font-family: var(--font-day), var(--font-text);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.title[data-party="themed-party"] {
+  font-family: var(--font-themed), var(--font-text);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.title[data-party="rave-party"] {
+  font-family: var(--font-rave), var(--font-text);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.title[data-party="after-party"] {
+  font-family: var(--font-after), var(--font-text);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: lowercase;
+}
+
+.headCopy {
+  display: grid;
+  gap: 14px;
+}
+
+.lead {
+  margin: 0;
+  font-size: clamp(20px, 1.7vw, 28px);
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+
+.intro {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #4a4448;
+}
+
+.hero {
+  position: relative;
+  margin: 0;
+  height: clamp(320px, 62vh, 720px);
+  overflow: hidden;
+}
+
+.hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero figcaption {
+  position: absolute;
+  left: clamp(20px, 6vw, 112px);
+  bottom: 24px;
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 10px rgb(16 11 16 / 0.6);
+  white-space: pre-wrap;
+}
+
+.block {
+  padding: clamp(64px, 10vh, 120px) clamp(20px, 6vw, 112px) 0;
+}
+
+.blockTitle {
+  margin: 0 0 clamp(28px, 4vw, 48px);
+  font-size: clamp(32px, 3.6vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+/* ---------- Requirements ---------- */
+
+.req {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1.5px solid var(--ink);
+  border-bottom: 1.5px solid var(--ink);
+}
+
+.req li {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 16px;
+  padding: 24px 20px;
+}
+
+.req li + li {
+  border-left: 1px solid rgb(17 17 17 / 0.16);
+}
+
+.req svg {
+  grid-row: 1 / 3;
+  width: 52px;
+  height: 52px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reqLabel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b6468;
+}
+
+.reqValue {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.note {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: #6b6468;
+}
+
+/* ---------- Essentials: the main information, three big plates side by side ---------- */
+
+.essentials {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: clamp(14px, 1.8vw, 28px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.essentials .plate {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.essentials img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.essentials .n {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 8px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.essentials h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-ui);
+  font-size: clamp(24px, 2.4vw, 36px);
+  font-weight: 800;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.essentials p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #4a4448;
+}
+
+/* ---------- Add-ons: optional extras, deliberately quieter than Essentials ---------- */
+
+.optional {
+  margin-top: clamp(48px, 7vh, 80px);
+  padding: 22px clamp(16px, 2vw, 28px) 26px;
+  background: rgb(17 17 17 / 0.045);
+}
+
+.optionalHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 18px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.optionalHead span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #6b6468;
+  text-transform: none;
+}
+
+.addons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px clamp(16px, 2vw, 28px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.addons li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.addons img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+
+.addons h3 {
+  margin: 0 0 2px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.addons h3::before {
+  content: "+ ";
+  color: var(--pink);
+}
+
+.addons p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b6468;
+}
+
+/* ---------- CTA band in OBI pink ---------- */
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px 32px;
+  margin-top: clamp(80px, 12vh, 140px);
+  padding: clamp(28px, 4vw, 48px) clamp(20px, 6vw, 112px);
+  /* pink into purple, left to right; the colours slide a little on hover */
+  background: linear-gradient(100deg, var(--pink) 0%, #e0359d 40%, var(--purple) 100%) 0 0 / 160% 100%;
+  color: var(--paper);
+  text-decoration: none;
+  transition: background-position 0.7s var(--ease-out);
+}
+
+.cta:hover {
+  background-position: 100% 0;
+}
+
+.cta > span:first-child {
+  font-size: clamp(44px, 7vw, 120px);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.ctaSub {
+  font-size: clamp(16px, 1.3vw, 20px);
+  font-weight: 700;
+  transition: transform 0.4s var(--ease-out);
+}
+
+.cta:hover .ctaSub {
+  transform: translateX(8px);
+}
+
+.pager {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 36px clamp(20px, 6vw, 112px);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pager a {
+  display: grid;
+  gap: 4px;
+  text-decoration: none;
+  font-size: 20px;
+}
+
+.pager a span {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--pink);
+}
+
+.pager a:nth-child(2) {
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  border-bottom: 1.5px solid currentColor;
+}
+
+.pager a:last-child {
+  justify-items: end;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .head {
+    grid-template-columns: 1fr;
+    padding-top: calc(60px + 48px);
+  }
+
+  .req {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .req li:nth-child(3) {
+    border-left: 0;
+  }
+
+  .req li:nth-child(n + 3) {
+    border-top: 1px solid rgb(17 17 17 / 0.16);
+  }
+
+  .essentials {
+    grid-auto-flow: row;
+    gap: 14px;
+  }
+
+  .essentials li {
+    display: grid;
+    grid-template-columns: 38% 1fr;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .essentials .plate {
+    margin: 0;
+  }
+
+  .essentials img {
+    aspect-ratio: 1;
+  }
+
+  .addons {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pager {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pager a:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .addons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Phones: the icon column was eating the width, so values broke mid-word. */
+@media (max-width: 560px) {
+  .req li {
+    grid-template-columns: 36px 1fr;
+    gap: 2px 10px;
+    padding: 18px 12px;
+  }
+
+  .req svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .reqLabel {
+    font-size: 11px;
+  }
+
+  .reqValue {
+    font-size: 17px;
+    line-height: 1.25;
+    word-break: keep-all;
+  }
+}

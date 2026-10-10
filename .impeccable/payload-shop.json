@@ -1,0 +1,70 @@
+{
+  "title": "3D Shop 공간 고르기",
+  "question": "컨테이너 안을 어떤 방으로 꾸밀지 골라 주세요. 세 가지 모두 의도적으로 소박한 3D 렌더 느낌이에요.",
+  "options": [
+    {
+      "id": "bedroom",
+      "label": "Container bedroom",
+      "thesis": "컨테이너 안을 아늑한 침실로. 매트리스, 작은 책상 위 DJ 세팅, 벽에 걸린 굿즈.",
+      "palette": [
+        "#F71D64",
+        "#C14ED4",
+        "#FFB792",
+        "#111111"
+      ],
+      "materials": [
+        "로우폴리 3D",
+        "손그림 텍스처",
+        "컨테이너 골강판"
+      ],
+      "viewport": "Room inside the container: a cozy bedroom. A low mattress with a blanket along the left wall, a small desk against the right wall holding the DJ controller, a clamp lamp, a wall shelf and hooks with the goods, a small speaker pair on the floor. Camera at standing eye level just inside, looking down the length of the container toward its closed end wall.",
+      "risk": "좁은 침실 구성이라 상품 6개와 조명·스피커를 서로 떨어뜨려 놓기 빠듯해요.",
+      "comp": ".impeccable/mocks/shop/bedroom.png",
+      "kicker": "THE ROLL"
+    },
+    {
+      "id": "living",
+      "label": "Container living room",
+      "thesis": "컨테이너 안을 거실로. 작은 소파, 낮은 테이블 위 컨트롤러, 턴테이블과 스피커.",
+      "palette": [
+        "#F71D64",
+        "#C14ED4",
+        "#FFB792",
+        "#111111"
+      ],
+      "materials": [
+        "로우폴리 3D",
+        "손그림 텍스처",
+        "컨테이너 골강판"
+      ],
+      "viewport": "Room inside the container: a small living room. A compact two-seat sofa on the left, a low coffee table in the middle with the DJ controller, a sideboard on the right with a turntable and speakers, a floor lamp, a coat hook with the cap and bandana. Camera low and wide from just inside the entrance, looking down the container toward its closed end wall.",
+      "risk": "소파와 가구 때문에 상품이 묻힐 수 있어요.",
+      "comp": ".impeccable/mocks/shop/living.png"
+    },
+    {
+      "id": "studio",
+      "label": "Container studio",
+      "thesis": "컨테이너 안을 DJ 작업실로. 가운데 작업대, 페그보드 굿즈, 세로 LED 바.",
+      "palette": [
+        "#F71D64",
+        "#C14ED4",
+        "#FFB792",
+        "#111111"
+      ],
+      "materials": [
+        "로우폴리 3D",
+        "손그림 텍스처",
+        "컨테이너 골강판"
+      ],
+      "viewport": "Room inside the container: a tidy DJ studio. A long work table centered in the container with the DJ controller, a pegboard wall on the right holding the goods, a vertical LED light bar standing in a corner, a turntable and speakers on a low cabinet on the left. Camera at eye level, symmetrical one-point perspective down the length of the container toward its closed end wall.",
+      "risk": "대칭 구도라 가장 정돈돼 보이지만, 가장 상점처럼 보여서 '방' 느낌은 약할 수 있어요.",
+      "comp": ".impeccable/mocks/shop/studio.png"
+    }
+  ],
+  "reroll": true,
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "steer": true
+}

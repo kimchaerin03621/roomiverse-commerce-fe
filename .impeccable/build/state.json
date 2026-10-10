@@ -1,0 +1,485 @@
+{
+  "tool": "build-phase",
+  "version": 2,
+  "startedAt": "2026-10-03T14:09:58.700Z",
+  "comp": ".impeccable/mocks/comp-1.png",
+  "direction": "958c4080",
+  "breakpoint": "1672x941",
+  "artifact": "app/page.tsx",
+  "phase": "hero",
+  "phases": {
+    "comps": {
+      "status": "closed",
+      "openedAt": "2026-10-03T14:09:58.700Z",
+      "closedAt": "2026-10-03T15:15:11.102Z",
+      "attempts": 1,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "3 comps, 1 approved",
+        "approved": ".impeccable/mocks/comp-1.png",
+        "at": "2026-10-03T15:15:11.102Z"
+      },
+      "forced": null
+    },
+    "spec": {
+      "status": "closed",
+      "openedAt": "2026-10-03T15:15:11.115Z",
+      "closedAt": "2026-10-03T15:22:02.227Z",
+      "attempts": 3,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "8 regions, 6 plates, 0 text regions measured",
+        "at": "2026-10-03T15:22:02.227Z"
+      },
+      "forced": null
+    },
+    "plates": {
+      "status": "closed",
+      "openedAt": "2026-10-03T15:22:02.227Z",
+      "closedAt": "2026-10-03T18:28:59.952Z",
+      "attempts": 8,
+      "notes": [
+        {
+          "at": "2026-10-03T17:54:41.364Z",
+          "text": "Plates gate blocked: fg-right-crane and logo intentionally differ from comp per user (2026-10-04). --force refused 4x (validator does not parse the Korean quotes). Intro built and verified manually at 1672x941 and 390x844; comp-diff 66%. Remaining: hero record, motion/responsive gates, finish review, DESIGN.md."
+        }
+      ],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "6/6 plates",
+        "at": "2026-10-03T18:28:59.928Z"
+      },
+      "forced": null
+    },
+    "hero": {
+      "status": "open",
+      "openedAt": "2026-10-03T18:28:59.952Z",
+      "closedAt": null,
+      "attempts": 3,
+      "notes": [
+        {
+          "at": "2026-10-03T18:37:13.199Z",
+          "text": "2026-10-04: user approved the first viewport (component-review hero session fd28cceb..., visualDecision approved). Hero gate still refuses on 'clipped plate' vetoes for mid-yard, fg-right-crane and logo. These are artifacts of comparing layered cutouts to a flattened comp: the left crane covers the yard's left edge in the comp, the crane leg is cut by the frame edge, and the sky around the logo reads as ink. Numeric readings are advisory after acceptance."
+        }
+      ],
+      "gate": {
+        "ok": false,
+        "reasons": [
+          "hero overall 65.0% < 72% (structure 41%, color 76%, detail 72%)",
+          "region nav-right is missing (detail 7%, structure 59%): the comp shows material the build does not",
+          "plate logo is placed but not at the comp's box: its ink spans 162x24px at (13,8) in the comp region and 142x24px at (46,8) in the build; size and position the <img> to the spec box (object-fit: cover), not to the surrounding layout",
+          "region nav-left (control) is contradicted (structure 50%, detail added 33%): this control differs from the comp: inspect its lettering and visible shape separately against the crop and the measured readings; preserve the region's control classification",
+          "text nav-left: letter-spacing is tighter than the comp's (gap 0.066 vs 0.169 of the cap height); set letter-spacing to open it by about 1px",
+          "text nav-right: cap height 9.8px in the build, 13.5px in the comp (-27%); set font-size so the cap height renders at 13.5px",
+          "plate mid-yard is clipped at the left and right: the comp's artwork keeps a margin there (ink box 1538x671 at 118,0 in the region) and the build's runs to the edge (1672x671 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+          "plate fg-right-crane is clipped at the right: the comp's artwork keeps a margin there (ink box 204x640 at 0,0 in the region) and the build's runs to the edge (220x649 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+          "plate logo is clipped at the right: the comp's artwork keeps a margin there (ink box 162x24 at 13,8 in the region) and the build's runs to the edge (142x24 at 46,8); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+        ],
+        "regionReasons": {
+          "nav-right": [
+            "region nav-right is missing (detail 7%, structure 59%): the comp shows material the build does not",
+            "text nav-right: cap height 9.8px in the build, 13.5px in the comp (-27%); set font-size so the cap height renders at 13.5px"
+          ],
+          "logo": [
+            "plate logo is placed but not at the comp's box: its ink spans 162x24px at (13,8) in the comp region and 142x24px at (46,8) in the build; size and position the <img> to the spec box (object-fit: cover), not to the surrounding layout",
+            "plate logo is clipped at the right: the comp's artwork keeps a margin there (ink box 162x24 at 13,8 in the region) and the build's runs to the edge (142x24 at 46,8); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+          ],
+          "nav-left": [
+            "region nav-left (control) is contradicted (structure 50%, detail added 33%): this control differs from the comp: inspect its lettering and visible shape separately against the crop and the measured readings; preserve the region's control classification",
+            "text nav-left: letter-spacing is tighter than the comp's (gap 0.066 vs 0.169 of the cap height); set letter-spacing to open it by about 1px"
+          ],
+          "mid-yard": [
+            "plate mid-yard is clipped at the left and right: the comp's artwork keeps a margin there (ink box 1538x671 at 118,0 in the region) and the build's runs to the edge (1672x671 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+          ],
+          "fg-right-crane": [
+            "plate fg-right-crane is clipped at the right: the comp's artwork keeps a margin there (ink box 204x640 at 0,0 in the region) and the build's runs to the edge (220x649 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+          ]
+        },
+        "summary": "hero 65% (drift)",
+        "score": 0.6503,
+        "verdict": "drift",
+        "report": ".impeccable/review/diff/hero/report.json",
+        "sideBySide": "C:/OMG/roomiverse2-fe/.impeccable/review/diff/hero/side-by-side.png",
+        "worst": [
+          "fg-right-crane drift 41%",
+          "nav-right missing 52%",
+          "nav-left contradicted 53%"
+        ],
+        "worstIds": [
+          "fg-right-crane",
+          "nav-right",
+          "nav-left"
+        ],
+        "worstCrops": [
+          {
+            "id": "fg-right-crane",
+            "verdict": "drift",
+            "score": {
+              "overall": 0.4051,
+              "structure": 0.3035,
+              "color": 0.7154,
+              "colorIntersection": 0.5981,
+              "paletteMatch": 0.7786,
+              "detail": 0.295,
+              "detailRaw": 0.5398,
+              "detailAdded": 0.4896,
+              "bands": 0.7714
+            },
+            "file": ".impeccable/review/diff/hero/regions/fg-right-crane.png"
+          },
+          {
+            "id": "nav-right",
+            "verdict": "missing",
+            "score": {
+              "overall": 0.5201,
+              "structure": 0.589,
+              "color": 0.6893,
+              "colorIntersection": 0.5361,
+              "paletteMatch": 0.7718,
+              "detail": 0.0691,
+              "detailRaw": 0.1264,
+              "detailAdded": 0.1146,
+              "bands": 0
+            },
+            "file": ".impeccable/review/diff/hero/regions/nav-right.png"
+          },
+          {
+            "id": "nav-left",
+            "verdict": "contradicted",
+            "score": {
+              "overall": 0.5289,
+              "structure": 0.4954,
+              "color": 0.7477,
+              "colorIntersection": 0.6078,
+              "paletteMatch": 0.823,
+              "detail": 0.2212,
+              "detailRaw": 0.3879,
+              "detailAdded": 0.3333,
+              "bands": 0.4381
+            },
+            "file": ".impeccable/review/diff/hero/regions/nav-left.png"
+          }
+        ],
+        "regionVerdicts": {
+          "bg-sky-sea": "drift",
+          "mid-yard": "drift",
+          "trigger-container": "drift",
+          "fg-left-crane": "drift",
+          "fg-right-crane": "drift",
+          "nav-left": "contradicted",
+          "logo": "drift",
+          "nav-right": "missing"
+        },
+        "at": "2026-10-03T18:36:59.012Z"
+      },
+      "forced": null,
+      "records": 3,
+      "readingsSeen": {
+        "text nav-left: cap height 17px in the build, 13.3px in the comp (+28%); set font-size so the cap height renders at 13.3px (font-match ranked Afacad 700 at 21px)": 1,
+        "text nav-left: letter-spacing is tighter than the comp's (gap 0.066 vs 0.169 of the cap height); set letter-spacing to open it by about 1px": 3,
+        "text nav-right: cap height 9.8px in the build, 13.5px in the comp (-27%); set font-size so the cap height renders at 13.5px": 3
+      },
+      "history": [
+        {
+          "at": "2026-10-03T18:33:10.539Z",
+          "score": 0.6503,
+          "worstIds": [
+            "fg-right-crane",
+            "nav-right",
+            "nav-left"
+          ],
+          "blockingReasons": [
+            "hero overall 65.0% < 72% (structure 41%, color 76%, detail 72%)",
+            "region nav-right is missing (detail 7%, structure 59%): the comp shows material the build does not",
+            "plate logo is placed but not at the comp's box: its ink spans 162x24px at (13,8) in the comp region and 142x24px at (46,8) in the build; size and position the <img> to the spec box (object-fit: cover), not to the surrounding layout",
+            "region nav-left (control) is contradicted (structure 50%, detail added 33%): this control differs from the comp: inspect its lettering and visible shape separately against the crop and the measured readings; preserve the region's control classification",
+            "text nav-left: letter-spacing is tighter than the comp's (gap 0.066 vs 0.169 of the cap height); set letter-spacing to open it by about 1px",
+            "text nav-right: cap height 9.8px in the build, 13.5px in the comp (-27%); set font-size so the cap height renders at 13.5px",
+            "plate mid-yard is clipped at the left and right: the comp's artwork keeps a margin there (ink box 1538x671 at 118,0 in the region) and the build's runs to the edge (1672x671 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+            "plate fg-right-crane is clipped at the right: the comp's artwork keeps a margin there (ink box 204x640 at 0,0 in the region) and the build's runs to the edge (220x649 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+            "plate logo is clipped at the right: the comp's artwork keeps a margin there (ink box 162x24 at 13,8 in the region) and the build's runs to the edge (142x24 at 46,8); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+          ],
+          "regionVerdicts": {
+            "bg-sky-sea": "drift",
+            "mid-yard": "drift",
+            "trigger-container": "drift",
+            "fg-left-crane": "drift",
+            "fg-right-crane": "drift",
+            "nav-left": "contradicted",
+            "logo": "drift",
+            "nav-right": "missing"
+          },
+          "artifactHash": "243b01f064f1"
+        },
+        {
+          "at": "2026-10-03T18:36:52.675Z",
+          "score": 0.6503,
+          "worstIds": [
+            "fg-right-crane",
+            "nav-right",
+            "nav-left"
+          ],
+          "blockingReasons": [
+            "hero overall 65.0% < 72% (structure 41%, color 76%, detail 72%)",
+            "region nav-right is missing (detail 7%, structure 59%): the comp shows material the build does not",
+            "plate logo is placed but not at the comp's box: its ink spans 162x24px at (13,8) in the comp region and 142x24px at (46,8) in the build; size and position the <img> to the spec box (object-fit: cover), not to the surrounding layout",
+            "region nav-left (control) is contradicted (structure 50%, detail added 33%): this control differs from the comp: inspect its lettering and visible shape separately against the crop and the measured readings; preserve the region's control classification",
+            "text nav-left: letter-spacing is tighter than the comp's (gap 0.066 vs 0.169 of the cap height); set letter-spacing to open it by about 1px",
+            "text nav-right: cap height 9.8px in the build, 13.5px in the comp (-27%); set font-size so the cap height renders at 13.5px",
+            "plate mid-yard is clipped at the left and right: the comp's artwork keeps a margin there (ink box 1538x671 at 118,0 in the region) and the build's runs to the edge (1672x671 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+            "plate fg-right-crane is clipped at the right: the comp's artwork keeps a margin there (ink box 204x640 at 0,0 in the region) and the build's runs to the edge (220x649 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+            "plate logo is clipped at the right: the comp's artwork keeps a margin there (ink box 162x24 at 13,8 in the region) and the build's runs to the edge (142x24 at 46,8); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+          ],
+          "regionVerdicts": {
+            "bg-sky-sea": "drift",
+            "mid-yard": "drift",
+            "trigger-container": "drift",
+            "fg-left-crane": "drift",
+            "fg-right-crane": "drift",
+            "nav-left": "contradicted",
+            "logo": "drift",
+            "nav-right": "missing"
+          },
+          "artifactHash": "243b01f064f1"
+        },
+        {
+          "at": "2026-10-03T18:36:59.036Z",
+          "score": 0.6503,
+          "worstIds": [
+            "fg-right-crane",
+            "nav-right",
+            "nav-left"
+          ],
+          "blockingReasons": [
+            "hero overall 65.0% < 72% (structure 41%, color 76%, detail 72%)",
+            "region nav-right is missing (detail 7%, structure 59%): the comp shows material the build does not",
+            "plate logo is placed but not at the comp's box: its ink spans 162x24px at (13,8) in the comp region and 142x24px at (46,8) in the build; size and position the <img> to the spec box (object-fit: cover), not to the surrounding layout",
+            "region nav-left (control) is contradicted (structure 50%, detail added 33%): this control differs from the comp: inspect its lettering and visible shape separately against the crop and the measured readings; preserve the region's control classification",
+            "text nav-left: letter-spacing is tighter than the comp's (gap 0.066 vs 0.169 of the cap height); set letter-spacing to open it by about 1px",
+            "text nav-right: cap height 9.8px in the build, 13.5px in the comp (-27%); set font-size so the cap height renders at 13.5px",
+            "plate mid-yard is clipped at the left and right: the comp's artwork keeps a margin there (ink box 1538x671 at 118,0 in the region) and the build's runs to the edge (1672x671 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+            "plate fg-right-crane is clipped at the right: the comp's artwork keeps a margin there (ink box 204x640 at 0,0 in the region) and the build's runs to the edge (220x649 at 0,0); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box",
+            "plate logo is clipped at the right: the comp's artwork keeps a margin there (ink box 162x24 at 13,8 in the region) and the build's runs to the edge (142x24 at 46,8); size the box to the artwork's aspect and use object-fit: contain, or place the <img> at the artwork's own size, never cover on a narrower box"
+          ],
+          "regionVerdicts": {
+            "bg-sky-sea": "drift",
+            "mid-yard": "drift",
+            "trigger-container": "drift",
+            "fg-left-crane": "drift",
+            "fg-right-crane": "drift",
+            "nav-left": "contradicted",
+            "logo": "drift",
+            "nav-right": "missing"
+          },
+          "artifactHash": "243b01f064f1"
+        }
+      ]
+    },
+    "sections": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "motion": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "responsive": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "review": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    }
+  },
+  "finish": null,
+  "sessionId": "bc6f87b6-7281-42bf-aa92-d0b9a8f5254b",
+  "plates": {
+    "bg-sky-sea": {
+      "id": "bg-sky-sea",
+      "file": "assets/plates/bg-sky-sea.png",
+      "status": "ok",
+      "assetHash": "239137666987c53ef5bc5f39c02232f48fa6c6c18f93fef6ac34e3acbb3f19f3",
+      "regionHash": "2111f862121fd813f0e5a47f0ac77d4eb3157117357b09520ce57c15990bb06b",
+      "referenceHash": "a5eda7308bb036327b5ebe255ae2f1bf3b837c54b69849454af0939f4e4d5f9b",
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 24160,
+        "totalPixels": 1573352,
+        "remainingPixels": 1549192,
+        "excludedFraction": 0.015355750016525227,
+        "fullyExcluded": false,
+        "regions": [
+          {
+            "id": "nav-left",
+            "kind": "control",
+            "cropPx": {
+              "x": 50,
+              "y": 26,
+              "w": 590,
+              "h": 32
+            },
+            "pixels": 18880
+          },
+          {
+            "id": "nav-right",
+            "kind": "control",
+            "cropPx": {
+              "x": 1458,
+              "y": 26,
+              "w": 165,
+              "h": 32
+            },
+            "pixels": 5280
+          }
+        ],
+        "ignoredContainers": []
+      },
+      "compHash": "e0b8b80c6980734888996bca0997b71f0158b8fde023d0a0628d4bddf913c69b",
+      "size": "1672x941",
+      "score": 0.5468
+    },
+    "mid-yard": {
+      "id": "mid-yard",
+      "file": "assets/plates/mid-yard.png",
+      "status": "ok",
+      "assetHash": "6b81304e0fa8030219d2a103cc0d1cae7bbf8ce093b98babae29a3fc6c955ee4",
+      "regionHash": "cb735c16a7433ba60854ecf45556c7668e0eba702ed0a73457868f045433eecf",
+      "referenceHash": "a5eda7308bb036327b5ebe255ae2f1bf3b837c54b69849454af0939f4e4d5f9b",
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 0,
+        "totalPixels": 1121912,
+        "remainingPixels": 1121912,
+        "excludedFraction": 0.0,
+        "fullyExcluded": false,
+        "regions": [],
+        "ignoredContainers": []
+      },
+      "compHash": "e0b8b80c6980734888996bca0997b71f0158b8fde023d0a0628d4bddf913c69b",
+      "size": "1974x797",
+      "score": 0.4796
+    },
+    "trigger-container": {
+      "id": "trigger-container",
+      "file": "assets/plates/trigger-container.png",
+      "status": "ok",
+      "assetHash": "d4df1ca066b636e397ae35fc7622a93620f3bec68c5ea3a7e2317d1ea9fad234",
+      "regionHash": "3f9e8d28256e4833cdb29cf3dcad80d27bb9cc09584011f90b82a9c1db26f1be",
+      "referenceHash": "a5eda7308bb036327b5ebe255ae2f1bf3b837c54b69849454af0939f4e4d5f9b",
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 0,
+        "totalPixels": 36630,
+        "remainingPixels": 36630,
+        "excludedFraction": 0.0,
+        "fullyExcluded": false,
+        "regions": [],
+        "ignoredContainers": []
+      },
+      "compHash": "e0b8b80c6980734888996bca0997b71f0158b8fde023d0a0628d4bddf913c69b",
+      "size": "1448x1086",
+      "score": 0.5836
+    },
+    "fg-left-crane": {
+      "id": "fg-left-crane",
+      "file": "assets/plates/fg-left-crane.png",
+      "status": "ok",
+      "assetHash": "985ea181c72eb4aa09e80b192f04e772b8ab16b639b7c97186faf76cd9b7cb98",
+      "regionHash": "f526829c24dd70ddf6e314b33ceb16f0bf5bb38aec961dc1c90b4d18f9d74440",
+      "referenceHash": "a5eda7308bb036327b5ebe255ae2f1bf3b837c54b69849454af0939f4e4d5f9b",
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 18880,
+        "totalPixels": 630470,
+        "remainingPixels": 611590,
+        "excludedFraction": 0.02994591336621885,
+        "fullyExcluded": false,
+        "regions": [
+          {
+            "id": "nav-left",
+            "kind": "control",
+            "cropPx": {
+              "x": 50,
+              "y": 26,
+              "w": 590,
+              "h": 32
+            },
+            "pixels": 18880
+          }
+        ],
+        "ignoredContainers": []
+      },
+      "compHash": "e0b8b80c6980734888996bca0997b71f0158b8fde023d0a0628d4bddf913c69b",
+      "size": "1070x1470",
+      "score": 0.4056
+    },
+    "fg-right-crane": {
+      "id": "fg-right-crane",
+      "file": "assets/plates/fg-right-crane.png",
+      "status": "ok",
+      "assetHash": "12f2bc86168c22a71db3006d83e4d41659207694ff7be682f74a0c20fda6af9a",
+      "regionHash": "61463d506a954e61c3594c29fd4f02788a3d72969981e32be8439fb4798891f2",
+      "referenceHash": "a5eda7308bb036327b5ebe255ae2f1bf3b837c54b69849454af0939f4e4d5f9b",
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 0,
+        "totalPixels": 143220,
+        "remainingPixels": 143220,
+        "excludedFraction": 0.0,
+        "fullyExcluded": false,
+        "regions": [],
+        "ignoredContainers": []
+      },
+      "compHash": "e0b8b80c6980734888996bca0997b71f0158b8fde023d0a0628d4bddf913c69b",
+      "size": "724x2172",
+      "score": 0.5568
+    },
+    "logo": {
+      "id": "logo",
+      "file": "assets/plates/logo.png",
+      "status": "ok",
+      "assetHash": "332bab957e8a15a51fdea30d312b87a55b530283db110e02619d5386f5908f73",
+      "regionHash": "ef9ea5e02b9b62b69d5f9e5f9007b5c787619288e339499c9c171a4ab85258fc",
+      "referenceHash": "a5eda7308bb036327b5ebe255ae2f1bf3b837c54b69849454af0939f4e4d5f9b",
+      "reference": {
+        "policy": "plate-reference-v2",
+        "excludedPixels": 0,
+        "totalPixels": 7520,
+        "remainingPixels": 7520,
+        "excludedFraction": 0.0,
+        "fullyExcluded": false,
+        "regions": [],
+        "ignoredContainers": []
+      },
+      "compHash": "e0b8b80c6980734888996bca0997b71f0158b8fde023d0a0628d4bddf913c69b",
+      "size": "2010x399",
+      "score": 0.9088
+    }
+  }
+}

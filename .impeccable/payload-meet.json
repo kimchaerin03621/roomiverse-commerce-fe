@@ -1,0 +1,73 @@
+{
+  "title": "Meet ROOMi 구성 고르기",
+  "question": "Meet ROOMi 페이지의 구성을 골라 주세요. 셋 다 같은 'CD 싱글 패키지' 세계 안에서 구도만 달라요.",
+  "options": [
+    {
+      "id": "tray",
+      "label": "Jewel-case tray",
+      "thesis": "페이지 첫 화면이 열린 CD 케이스의 트레이예요. 핑크·보라로 인쇄된 ROOMi 디스크가 크게 놓이고, 브랜드 스토리는 트레이 카드에 적혀 있어요.",
+      "palette": [
+        "#F0F0F0",
+        "#F71D64",
+        "#C14ED4",
+        "#FFB792",
+        "#111111"
+      ],
+      "materials": [
+        "CD 패키지 인쇄물",
+        "라이트그레이 종이",
+        "형광 인쇄 잉크"
+      ],
+      "viewport": "Composition: the first viewport is an opened jewel case seen straight on, filling the screen: on the right half, a large screen-printed CD (hot pink and violet ink, the ROOMi logo printed on it, the matte silver ring visible) sitting in the clear tray; the left half is the tray card in light gray paper carrying \"BRAND STORY\" as a small label and the brand story text in clean grotesk at reading size. A thin translucent polycarbonate sheen crosses the whole viewport. The section below begins with a huge hot-pink \"ABOUT US\" set flush left, with the black sprayed X over its corner.",
+      "risk": "디스크와 케이스가 소품처럼 보이면 장식에 그칠 수 있어요.",
+      "comp": ".impeccable/mocks/meet/tray.png",
+      "kicker": "THE ROLL"
+    },
+    {
+      "id": "liner",
+      "label": "Liner-notes spread",
+      "thesis": "CD 부클릿을 펼친 두 페이지. 왼쪽은 공연장 사진, 오른쪽은 라이너 노트처럼 조판된 브랜드 스토리와 트랙리스트 목차예요.",
+      "palette": [
+        "#F0F0F0",
+        "#F71D64",
+        "#C14ED4",
+        "#FFB792",
+        "#111111"
+      ],
+      "materials": [
+        "CD 패키지 인쇄물",
+        "라이트그레이 종이",
+        "형광 인쇄 잉크"
+      ],
+      "viewport": "Composition: the first viewport is an open CD booklet spread laid flat, a thin center gutter running down the middle. Left page: a full-bleed flash-lit concert crowd photo with the two-wordmark logo printed over it in a pink-to-violet gradient. Right page: light gray paper set like liner notes: \"BRAND STORY\" small, the brand story in two narrow columns, and a numbered tracklist used as the page's table of contents: \"01 Brand Story / 02 About Us / 03 Value / 04 How\". The section below begins with the three value icons (glossy isometric 3D buttons: a play button, a layered disc, stacked tiles) on light gray.",
+      "risk": "두 페이지 구성이 좁은 화면에서는 위아래로 쌓여야 해요.",
+      "comp": ".impeccable/mocks/meet/liner.png"
+    },
+    {
+      "id": "poster",
+      "label": "Fold-out poster insert",
+      "thesis": "CD 안에 접혀 있는 포스터를 펼친 느낌. 접힌 자국이 그리드가 되고, 그 칸마다 섹션이 들어가요.",
+      "palette": [
+        "#F0F0F0",
+        "#F71D64",
+        "#C14ED4",
+        "#FFB792",
+        "#111111"
+      ],
+      "materials": [
+        "CD 패키지 인쇄물",
+        "라이트그레이 종이",
+        "형광 인쇄 잉크"
+      ],
+      "viewport": "Composition: the first viewport is a fold-out poster insert being opened: the screen is divided by visible fold creases into a 4-panel grid (slight paper relief and shadow along the creases). The largest panel holds the flash-lit concert crowd photo with the gradient two-wordmark logo; the next panel holds \"BRAND STORY\" and the text in grotesk on light gray paper; a narrow panel holds a vertical OBI-like strip in hot pink with \"MEET ROOMi\" and the tracklist \"01 Brand Story / 02 About Us / 03 Value / 04 How\". Below the fold, the next section begins with a huge hot-pink \"ABOUT US\".",
+      "risk": "접힌 자국이 과하면 산만해 보일 수 있어요.",
+      "comp": ".impeccable/mocks/meet/poster.png"
+    }
+  ],
+  "reroll": true,
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "steer": true
+}

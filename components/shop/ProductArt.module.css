@@ -1,0 +1,113 @@
+.art {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  aspect-ratio: 4 / 5;
+  padding: clamp(16px, 2vw, 28px);
+  overflow: hidden;
+  background: var(--night);
+  color: var(--paper);
+  isolation: isolate;
+}
+
+/* Two soft neon pools, placed differently for every product. */
+.art::before,
+.art::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(34px);
+  aspect-ratio: 1;
+}
+
+.art::before {
+  left: var(--x1);
+  top: var(--y1);
+  width: var(--size1);
+  translate: -50% -50%;
+  background: var(--pink);
+  opacity: 0.78;
+}
+
+.art::after {
+  left: var(--x2);
+  top: var(--y2);
+  width: 46%;
+  translate: -50% -50%;
+  background: var(--purple);
+  opacity: 0.7;
+}
+
+.art[data-tone="1"]::before {
+  background: var(--purple);
+}
+
+.art[data-tone="1"]::after {
+  background: var(--peach);
+}
+
+.art[data-tone="2"]::before {
+  background: var(--peach);
+  opacity: 0.6;
+}
+
+.art[data-tone="2"]::after {
+  background: var(--pink);
+}
+
+.art[data-kind="Hardware"]::before {
+  opacity: 0.9;
+}
+
+.cat {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.name {
+  position: relative;
+  z-index: 1;
+  max-width: 11ch;
+  overflow-wrap: normal;
+  font-family: var(--font-text);
+  font-size: clamp(26px, 2.6vw, 44px);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.art[data-large] .name {
+  font-size: clamp(36px, 4.2vw, 72px);
+}
+
+/* Single-product render of the 3D shop model on a soft light plate. */
+.photo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* top clears the RMV label, so tall products (the towel) never run under it */
+  padding: 64px 4% 4%;
+}
+
+.art:has(.photo)::before,
+.art:has(.photo)::after {
+  display: none;
+}
+
+.art:has(.photo) {
+  background: radial-gradient(ellipse at 50% 42%, #f7f6f8, #dcdadf);
+  color: var(--ink);
+}
+
+/* The name already sits next to the plate, so on a render only the small label stays. */
+.art:has(.photo) .name {
+  display: none;
+}

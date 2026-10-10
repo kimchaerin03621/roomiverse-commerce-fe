@@ -1,0 +1,671 @@
+.page {
+  overflow-x: clip;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-text);
+  color-scheme: light;
+}
+
+.page ::selection {
+  background: var(--pink);
+  color: var(--paper);
+}
+
+/* ---------- Hero: exactly one viewport at every size ---------- */
+
+.hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100svh;
+  min-height: 520px;
+  overflow: hidden;
+  background: var(--night);
+  color: var(--paper);
+}
+
+.heroPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 40%;
+  animation: drift 22s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from {
+    transform: scale(1.04) translate(0, 0);
+  }
+  to {
+    transform: scale(1.12) translate(-1.5%, -1%);
+  }
+}
+
+.heroShade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 52%, rgb(16 11 16 / 0.15), rgb(16 11 16 / 0.55) 70%),
+    linear-gradient(to bottom, rgb(16 11 16 / 0.45), rgb(16 11 16 / 0) 22%, rgb(16 11 16 / 0) 62%, rgb(16 11 16 / 0.7));
+}
+
+.heroBody {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: clamp(20px, 3.5vh, 40px);
+  width: min(100% - 40px, 1080px);
+  text-align: center;
+}
+
+/* The brand lockup, split so ROOMIVERSE can be solid paper-white instead of fading into the gradient. */
+.wordmark {
+  position: relative;
+  width: min(78vw, 980px, 150svh);
+  aspect-ratio: 870 / 388;
+  margin: 0;
+  filter: drop-shadow(0 6px 30px rgb(247 29 100 / 0.35));
+  animation: rise 1.2s var(--ease-out) both;
+}
+
+/* Invisible box that HeroLit measures to place the photo-filled lettering. */
+.wordmarkBox {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The same photo, undimmed and brightened, visible only through the lettering. */
+.heroLit {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  filter: drop-shadow(0 6px 30px rgb(247 29 100 / 0.45));
+  animation: rise 1.2s var(--ease-out) both;
+}
+
+.heroPhotoLit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 40%;
+  filter: brightness(1.6) saturate(1.1) contrast(1.05);
+  animation: drift 22s ease-in-out infinite alternate;
+}
+
+/* Fallback fill until the lit photo layer is in place (and without JS). */
+.wordmarkRoomi {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.4s;
+  background: linear-gradient(100deg, var(--pink) 8%, #e2399b 42%, var(--purple) 78%);
+  -webkit-mask: url("/meet/wordmark-roomi@4x.png") center / contain no-repeat;
+  mask: url("/meet/wordmark-roomi@4x.png") center / contain no-repeat;
+}
+
+.wordmarkBox[data-lit] ~ .wordmarkRoomi {
+  opacity: 0;
+}
+
+.wordmarkVerse {
+  position: absolute;
+  left: 70.7%;
+  top: 29.6%;
+  width: 29.3%;
+  height: 14.7%;
+  background: var(--paper);
+  -webkit-mask: url("/meet/wordmark-verse@4x.png") center / 100% 100% no-repeat;
+  mask: url("/meet/wordmark-verse@4x.png") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 0.7px var(--paper)) drop-shadow(0 1px 8px rgb(16 11 16 / 0.7));
+}
+
+.heroIntro {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(17px, 1.35vw, 22px);
+  line-height: 1.45;
+  text-shadow: 0 1px 12px rgb(16 11 16 / 0.6);
+  animation: rise 1.2s var(--ease-out) 0.25s both;
+}
+
+.heroIntro span {
+  font-family: var(--font-text);
+  font-size: 0.82em;
+  opacity: 0.86;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+.scrollCue {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(20px, 4vh, 40px);
+  translate: -50% 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.scrollCue svg {
+  width: 22px;
+  animation: nudge 1.8s var(--ease-out) infinite;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+/* ---------- Brand story ---------- */
+
+.story {
+  scroll-margin-top: 92px;
+  padding: clamp(96px, 14vh, 168px) clamp(20px, 6vw, 112px) clamp(80px, 12vh, 140px);
+}
+
+.storyLead {
+  max-width: 17ch;
+  margin: 0 0 clamp(40px, 6vw, 80px);
+  font-size: clamp(34px, 5.2vw, 84px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.storyLead em {
+  font-style: normal;
+  color: var(--pink);
+}
+
+.storyCols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 4vw, 72px);
+  max-width: 1080px;
+  margin-left: auto;
+  font-size: clamp(16px, 1.1vw, 18px);
+  line-height: 1.75;
+}
+
+.storyCols p {
+  margin: 0;
+}
+
+.storyCols p:last-child {
+  color: #4a4448;
+}
+
+/* ---------- Before / After ---------- */
+
+.transform {
+  scroll-margin-top: 92px;
+  background: var(--night);
+}
+
+.stage {
+  --pos: 100%;
+  position: relative;
+  height: min(86svh, 56vw);
+  min-height: 420px;
+  overflow: hidden;
+  background: var(--night);
+  user-select: none;
+}
+
+.stageImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 45%;
+}
+
+/* The same photograph, dimmed and washed in the brand lights. Visible to the right of the divider. */
+.afterLayer {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 0 var(--pos));
+}
+
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 38% 55% at 14% 30%, rgb(247 29 100 / 0.85), transparent 72%),
+    radial-gradient(ellipse 34% 60% at 52% 22%, rgb(193 78 212 / 0.8), transparent 74%),
+    radial-gradient(ellipse 30% 55% at 90% 28%, rgb(255 183 146 / 0.75), transparent 70%),
+    linear-gradient(to top, rgb(247 29 100 / 0.5), transparent 45%);
+  mix-blend-mode: screen;
+  animation: breathe 5s ease-in-out infinite alternate;
+}
+
+.glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 85% 85% at 50% 50%, transparent 40%, rgb(16 11 16 / 0.7));
+}
+
+@keyframes breathe {
+  from {
+    opacity: 0.78;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--pos);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--paper);
+  box-shadow: 0 0 24px rgb(247 29 100 / 0.8);
+  pointer-events: none;
+}
+
+.knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--pink);
+  color: var(--paper);
+  box-shadow: 0 6px 28px rgb(0 0 0 / 0.5);
+}
+
+.knob svg {
+  width: 28px;
+}
+
+.range {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ew-resize;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.range:focus-visible ~ .divider,
+.stage:has(.range:focus-visible) .knob {
+  outline: 3px solid var(--peach);
+  outline-offset: 3px;
+}
+
+.chip {
+  position: absolute;
+  bottom: clamp(20px, 4vh, 44px);
+  display: grid;
+  gap: 2px;
+  padding: 10px 16px;
+  background: rgb(16 11 16 / 0.72);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.chip span {
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--peach);
+}
+
+.chipBefore {
+  left: clamp(20px, 6vw, 112px);
+}
+
+.chipAfter {
+  right: clamp(20px, 6vw, 112px);
+  background: var(--pink);
+}
+
+.chipAfter span {
+  color: var(--paper);
+}
+
+/* ---------- About us ---------- */
+
+.about {
+  scroll-margin-top: 92px;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(28px, 5vw, 96px);
+  align-items: center;
+  padding: clamp(40px, 8vh, 96px) clamp(20px, 6vw, 112px) clamp(96px, 14vh, 168px);
+}
+
+.aboutPhoto {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.aboutText {
+  container-type: inline-size;
+  display: grid;
+  gap: 20px;
+  max-width: 620px;
+  font-size: clamp(16px, 1.1vw, 18px);
+  line-height: 1.75;
+}
+
+.aboutText p {
+  margin: 0;
+}
+
+.aboutTitle {
+  position: relative;
+  margin: 0 0 clamp(8px, 2vw, 28px);
+  color: var(--pink);
+  font-size: min(25cqw, 196px);
+  font-weight: 900;
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sprayX {
+  position: absolute;
+  top: -6%;
+  left: 88%;
+  width: min(20cqw, 160px);
+  height: auto;
+  rotate: 8deg;
+}
+
+/* ---------- Value ---------- */
+
+.values {
+  scroll-margin-top: 92px;
+  padding: clamp(80px, 12vh, 140px) clamp(20px, 6vw, 112px);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.valuesTitle {
+  margin: 0 0 clamp(40px, 6vw, 80px);
+  font-size: clamp(56px, 8vw, 140px);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.valuesTitle {
+  color: var(--pink);
+}
+
+.valueList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(32px, 4vw, 64px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.value {
+  text-align: center;
+}
+
+.value img {
+  display: block;
+  width: min(80%, 260px);
+  height: clamp(150px, 15vw, 230px);
+  object-fit: contain;
+  object-position: center bottom;
+  margin: 0 auto 28px;
+  filter: drop-shadow(0 18px 24px rgb(0 0 0 / 0.45));
+  transition: transform 0.6s var(--ease-out);
+}
+
+.value:hover img {
+  transform: translateY(-6px);
+}
+
+.value h3 {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-family: var(--font-ui);
+  font-size: clamp(26px, 2.4vw, 38px);
+  font-weight: 700;
+}
+
+.value h3 span {
+  font-family: var(--font-text);
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--peach);
+}
+
+.value p {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(17px, 1.3vw, 21px);
+  line-height: 1.4;
+  color: #cfc8cc;
+}
+
+/* ---------- How ---------- */
+
+.how {
+  scroll-margin-top: 92px;
+  padding: clamp(80px, 12vh, 140px) clamp(20px, 6vw, 112px);
+}
+
+.howHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 48px;
+  margin-bottom: clamp(40px, 6vw, 80px);
+}
+
+.howTitle {
+  margin: 0;
+  color: var(--pink);
+  font-size: clamp(56px, 8vw, 140px);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.howLead {
+  max-width: 24ch;
+  margin: 0;
+  font-size: clamp(16px, 1.2vw, 20px);
+  line-height: 1.6;
+}
+
+.steps {
+  display: grid;
+  gap: clamp(48px, 7vw, 112px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(24px, 5vw, 96px);
+  align-items: center;
+}
+
+.step:nth-child(even) {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+.step:nth-child(even) .stepImg {
+  order: 2;
+}
+
+.stepImg {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.stepBody {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  font-size: clamp(16px, 1.1vw, 18px);
+  line-height: 1.7;
+}
+
+.stepBody p {
+  margin: 0;
+  max-width: 28ch;
+}
+
+.stepNo {
+  font-family: var(--font-ui);
+  font-size: clamp(64px, 8vw, 128px);
+  font-weight: 700;
+  line-height: 0.85;
+  color: var(--pink);
+}
+
+.stepName {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: clamp(32px, 3.4vw, 56px);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.stepName span {
+  font-family: var(--font-text);
+  font-size: 0.4em;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--purple);
+}
+
+.stepCta {
+  margin-top: 6px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--pink);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.stepCta:hover,
+.stepCta:focus-visible {
+  color: var(--pink);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .storyCols,
+  .about,
+  .valueList,
+  .step,
+  .step:nth-child(even) {
+    grid-template-columns: 1fr;
+  }
+
+  .step:nth-child(even) .stepImg {
+    order: 0;
+  }
+
+  .storyCols {
+    margin-left: 0;
+  }
+
+  .value img {
+    height: 150px;
+  }
+
+  .wordmark {
+    width: 88vw;
+  }
+
+  .stage {
+    height: 78svh;
+  }
+
+  .knob {
+    width: 52px;
+    height: 52px;
+  }
+
+  .chip {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroPhoto,
+  .heroPhotoLit,
+  .heroLit,
+  .glow,
+  .wordmark,
+  .heroIntro,
+  .scrollCue svg {
+    animation: none;
+  }
+}

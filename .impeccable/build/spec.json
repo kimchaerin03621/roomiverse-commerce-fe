@@ -1,0 +1,505 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-10-03T18:29:41.119Z",
+  "comp": ".impeccable/mocks/comp-1.png",
+  "warnings": [
+    "region bg-sky-sea: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)",
+    "region mid-yard: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)",
+    "region fg-left-crane: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)",
+    "region fg-right-crane: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)",
+    "region logo: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)"
+  ],
+  "uncoveredInkCells": [],
+  "compSize": {
+    "width": 1672,
+    "height": 941
+  },
+  "aspect": 1.7768,
+  "orientation": "landscape",
+  "palette": [
+    {
+      "hex": "#100b10",
+      "coverage": 0.3827
+    },
+    {
+      "hex": "#341313",
+      "coverage": 0.2173
+    },
+    {
+      "hex": "#3b1c2c",
+      "coverage": 0.2028
+    },
+    {
+      "hex": "#571b17",
+      "coverage": 0.1077
+    },
+    {
+      "hex": "#663553",
+      "coverage": 0.0896
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.0556,
+      "strength": 0.2881
+    },
+    {
+      "y": 0.1806,
+      "strength": 0.2139
+    },
+    {
+      "y": 0.2083,
+      "strength": 0.244
+    }
+  ],
+  "regions": [
+    {
+      "id": "bg-sky-sea",
+      "kind": "plate",
+      "note": "deepest parallax layer: pink-violet dusk sky with clouds, distant city skyline, sea with reflections, quay cranes and docked ship on the right horizon",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 1,
+        "h": 1
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 1672,
+        "h": 941
+      },
+      "aspect": 1.7768,
+      "palette": [
+        {
+          "hex": "#100b10",
+          "coverage": 0.3827
+        },
+        {
+          "hex": "#341313",
+          "coverage": 0.2173
+        },
+        {
+          "hex": "#3b1c2c",
+          "coverage": 0.2028
+        },
+        {
+          "hex": "#571b17",
+          "coverage": 0.1077
+        },
+        {
+          "hex": "#663553",
+          "coverage": 0.0896
+        }
+      ],
+      "detail": {
+        "energy": 29.2928
+      },
+      "medium": "raster",
+      "plate": "assets/plates/bg-sky-sea.png",
+      "text": null
+    },
+    {
+      "id": "mid-yard",
+      "kind": "plate",
+      "note": "middle parallax layer: wet reflective concrete container yard seen from above, stacked containers in muted red, blue and gray, yellow straddle carriers and lamp posts, pink light reflections; transparent above the yard horizon",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0,
+        "y": 0.2869,
+        "w": 1,
+        "h": 0.7131
+      },
+      "px": {
+        "x": 0,
+        "y": 270,
+        "w": 1672,
+        "h": 671
+      },
+      "aspect": 2.4918,
+      "palette": [
+        {
+          "hex": "#37171e",
+          "coverage": 0.4143
+        },
+        {
+          "hex": "#110b11",
+          "coverage": 0.3416
+        },
+        {
+          "hex": "#511b14",
+          "coverage": 0.1264
+        },
+        {
+          "hex": "#712936",
+          "coverage": 0.0644
+        },
+        {
+          "hex": "#643354",
+          "coverage": 0.0533
+        }
+      ],
+      "detail": {
+        "energy": 28.0412
+      },
+      "medium": "raster",
+      "plate": "assets/plates/mid-yard.png",
+      "text": null
+    },
+    {
+      "id": "trigger-container",
+      "kind": "plate",
+      "note": "the single red 20ft container with its right door ajar and hot pink light glowing inside; the clickable trigger, cut out on transparency",
+      "grid": null,
+      "box": {
+        "x": 0.4336,
+        "y": 0.6079,
+        "w": 0.1328,
+        "h": 0.1753
+      },
+      "px": {
+        "x": 725,
+        "y": 572,
+        "w": 222,
+        "h": 165
+      },
+      "aspect": 1.3455,
+      "palette": [
+        {
+          "hex": "#470a0b",
+          "coverage": 0.346
+        },
+        {
+          "hex": "#3b141f",
+          "coverage": 0.2964
+        },
+        {
+          "hex": "#6a0a16",
+          "coverage": 0.1592
+        },
+        {
+          "hex": "#942e50",
+          "coverage": 0.1106
+        },
+        {
+          "hex": "#e51448",
+          "coverage": 0.0878
+        }
+      ],
+      "detail": {
+        "energy": 12.2227
+      },
+      "medium": "raster",
+      "plate": "assets/plates/trigger-container.png",
+      "text": null,
+      "flags": [
+        {
+          "id": "baked-composite",
+          "message": "Frame and view are one image here, so the page can't swap the view or move the door on their own."
+        }
+      ]
+    },
+    {
+      "id": "fg-left-crane",
+      "kind": "plate",
+      "note": "nearest parallax layer: out-of-focus dark steel gantry crane beams and girders along the left edge and top-left, rim-lit pink, on transparency",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 0.4007,
+        "h": 1
+      },
+      "px": {
+        "x": 0,
+        "y": 0,
+        "w": 670,
+        "h": 941
+      },
+      "aspect": 0.712,
+      "palette": [
+        {
+          "hex": "#0d090d",
+          "coverage": 0.5307
+        },
+        {
+          "hex": "#2a1929",
+          "coverage": 0.1891
+        },
+        {
+          "hex": "#331616",
+          "coverage": 0.1252
+        },
+        {
+          "hex": "#57202a",
+          "coverage": 0.1107
+        },
+        {
+          "hex": "#7e2d39",
+          "coverage": 0.0443
+        }
+      ],
+      "detail": {
+        "energy": 19.9135
+      },
+      "medium": "raster",
+      "plate": "assets/plates/fg-left-crane.png",
+      "text": null
+    },
+    {
+      "id": "fg-right-crane",
+      "kind": "plate",
+      "note": "near layer on the right edge: orange-yellow crane leg with lit platforms and railings, on transparency",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0.8684,
+        "y": 0.3082,
+        "w": 0.1316,
+        "h": 0.6918
+      },
+      "px": {
+        "x": 1452,
+        "y": 290,
+        "w": 220,
+        "h": 651
+      },
+      "aspect": 0.3379,
+      "palette": [
+        {
+          "hex": "#1e0b0d",
+          "coverage": 0.3892
+        },
+        {
+          "hex": "#471509",
+          "coverage": 0.3832
+        },
+        {
+          "hex": "#732309",
+          "coverage": 0.0927
+        },
+        {
+          "hex": "#4a243b",
+          "coverage": 0.0698
+        },
+        {
+          "hex": "#30273b",
+          "coverage": 0.0651
+        }
+      ],
+      "detail": {
+        "energy": 12.869
+      },
+      "medium": "raster",
+      "plate": "assets/plates/fg-right-crane.png",
+      "text": null
+    },
+    {
+      "id": "nav-left",
+      "kind": "control",
+      "note": "GNB left links: MEET ROOMi, WHAT'S GOING ON, LET'S PARTY, SHOP in white uppercase grotesk",
+      "grid": null,
+      "box": {
+        "x": 0.0299,
+        "y": 0.0276,
+        "w": 0.3529,
+        "h": 0.034
+      },
+      "px": {
+        "x": 50,
+        "y": 26,
+        "w": 590,
+        "h": 32
+      },
+      "aspect": 18.4375,
+      "palette": [
+        {
+          "hex": "#0e0c0f",
+          "coverage": 0.6951
+        },
+        {
+          "hex": "#f2eff0",
+          "coverage": 0.1041
+        },
+        {
+          "hex": "#361b33",
+          "coverage": 0.074
+        },
+        {
+          "hex": "#af4a97",
+          "coverage": 0.0694
+        },
+        {
+          "hex": "#8e4483",
+          "coverage": 0.0574
+        }
+      ],
+      "detail": {
+        "energy": 72.5233
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      },
+      "type": {
+        "comp": {
+          "lines": 1,
+          "glyphs": 30,
+          "capHeightPx": 13.3,
+          "inkIsDark": false,
+          "allCaps": false,
+          "advance": 0.7894,
+          "advTall": 0.7894,
+          "advX": null,
+          "gap": 0.1692,
+          "xRatio": 0.6293,
+          "stemW": 0.2216,
+          "contrast": 1.1002,
+          "serif": 0.6549,
+          "densTall": 0.6057,
+          "densX": null,
+          "weight": 0.6057
+        },
+        "widthClass": "wide",
+        "weightClass": "bold",
+        "chosen": {
+          "family": "Afacad",
+          "weight": 700,
+          "fontSizePx": 21,
+          "source": "index",
+          "fp": {
+            "lines": 1,
+            "glyphs": 32,
+            "capHeightPx": 13.1,
+            "inkIsDark": true,
+            "allCaps": true,
+            "advance": 0.7233,
+            "advTall": 0.7233,
+            "advX": null,
+            "gap": 0.1903,
+            "xRatio": null,
+            "stemW": 0.2265,
+            "contrast": 1.1069,
+            "serif": 0.7946,
+            "densTall": 0.6069,
+            "densX": null,
+            "weight": 0.6069
+          },
+          "stamp": "2a9628a202fa"
+        }
+      }
+    },
+    {
+      "id": "logo",
+      "kind": "image",
+      "note": "white two-wordmark graffiti ROOMi ROOMi logo, 24px ink height, centered over the sky; the edge ink the measurer sees is the sky photo, not the logo; ships from the user own logo file",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0.4438,
+        "y": 0.017,
+        "w": 0.1124,
+        "h": 0.0425
+      },
+      "px": {
+        "x": 742,
+        "y": 16,
+        "w": 188,
+        "h": 40
+      },
+      "aspect": 4.7,
+      "palette": [
+        {
+          "hex": "#c35189",
+          "coverage": 0.6611
+        },
+        {
+          "hex": "#f8f7f8",
+          "coverage": 0.2227
+        },
+        {
+          "hex": "#a75296",
+          "coverage": 0.0581
+        },
+        {
+          "hex": "#dfa2bf",
+          "coverage": 0.0332
+        },
+        {
+          "hex": "#f0ccdd",
+          "coverage": 0.0249
+        }
+      ],
+      "detail": {
+        "energy": 31.1447
+      },
+      "medium": "raster",
+      "plate": "assets/plates/logo.png",
+      "text": null
+    },
+    {
+      "id": "nav-right",
+      "kind": "control",
+      "note": "GNB right links: CART (0), MY in white uppercase grotesk",
+      "grid": null,
+      "box": {
+        "x": 0.872,
+        "y": 0.0276,
+        "w": 0.0987,
+        "h": 0.034
+      },
+      "px": {
+        "x": 1458,
+        "y": 26,
+        "w": 165,
+        "h": 32
+      },
+      "aspect": 5.1563,
+      "palette": [
+        {
+          "hex": "#cf477c",
+          "coverage": 0.734
+        },
+        {
+          "hex": "#b94986",
+          "coverage": 0.1397
+        },
+        {
+          "hex": "#e7a7c1",
+          "coverage": 0.0505
+        },
+        {
+          "hex": "#f8f4f6",
+          "coverage": 0.0455
+        },
+        {
+          "hex": "#da7499",
+          "coverage": 0.0303
+        }
+      ],
+      "detail": {
+        "energy": 20.4975
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null,
+      "surface": {
+        "flat": true,
+        "rules": false
+      }
+    }
+  ],
+  "compSha256": "c3a13ad640a8de349958414b26e11991db25e1cb8dfb33ad2dca1e4ce356cc5b",
+  "regionsSource": {
+    "path": ".impeccable/build/regions.json",
+    "sha256": "51dc51c517b5b94c80ed418da1f73334ea819e836f5f5467561462e0dcf63c75"
+  }
+}

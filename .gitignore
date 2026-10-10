@@ -1,57 +1,19 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Snowpack dependency directory (https://snowpack.dev/)
-web_modules/
-
-# TypeScript storage
+node_modules
+.next
+out
 *.tsbuildinfo
+next-env.d.ts
+.impeccable/config.local.json
+.impeccable/review/
+.impeccable/build/scaffold/
 
-# Build output directories
-dist/
-dist-ssr/
-build/
-out/
+# fonts: licences (e.g. 리아체) forbid redistributing the files; the CSS falls back to Noonnu's official addresses
+public/fonts/
 
-# Local Environment Files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Operating System Files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
+# local tooling and heavy working files
+.claude/
+.playwright-mcp/
+docs/photo-originals/
+docs/intro-originals/*.png
+docs/shorts/
+docs/font-candidates/

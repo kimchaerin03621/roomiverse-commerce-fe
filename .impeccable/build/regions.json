@@ -1,0 +1,97 @@
+{
+  "regions": [
+    {
+      "id": "bg-sky-sea",
+      "kind": "plate",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 1672,
+        "h": 941
+      },
+      "bleed": true,
+      "note": "deepest parallax layer: pink-violet dusk sky with clouds, distant city skyline, sea with reflections, quay cranes and docked ship on the right horizon"
+    },
+    {
+      "id": "mid-yard",
+      "kind": "plate",
+      "pixelBox": {
+        "x": 0,
+        "y": 270,
+        "w": 1672,
+        "h": 671
+      },
+      "bleed": true,
+      "note": "middle parallax layer: wet reflective concrete container yard seen from above, stacked containers in muted red, blue and gray, yellow straddle carriers and lamp posts, pink light reflections; transparent above the yard horizon"
+    },
+    {
+      "id": "trigger-container",
+      "kind": "plate",
+      "pixelBox": {
+        "x": 725,
+        "y": 572,
+        "w": 222,
+        "h": 165
+      },
+      "note": "the single red 20ft container with its right door ajar and hot pink light glowing inside; the clickable trigger, cut out on transparency"
+    },
+    {
+      "id": "fg-left-crane",
+      "kind": "plate",
+      "pixelBox": {
+        "x": 0,
+        "y": 0,
+        "w": 670,
+        "h": 941
+      },
+      "bleed": true,
+      "note": "nearest parallax layer: out-of-focus dark steel gantry crane beams and girders along the left edge and top-left, rim-lit pink, on transparency"
+    },
+    {
+      "id": "fg-right-crane",
+      "kind": "plate",
+      "pixelBox": {
+        "x": 1452,
+        "y": 290,
+        "w": 220,
+        "h": 651
+      },
+      "bleed": true,
+      "note": "near layer on the right edge: orange-yellow crane leg with lit platforms and railings, on transparency"
+    },
+    {
+      "id": "nav-left",
+      "kind": "control",
+      "pixelBox": {
+        "x": 50,
+        "y": 26,
+        "w": 590,
+        "h": 32
+      },
+      "note": "GNB left links: MEET ROOMi, WHAT'S GOING ON, LET'S PARTY, SHOP in white uppercase grotesk"
+    },
+    {
+      "id": "logo",
+      "kind": "image",
+      "pixelBox": {
+        "x": 742,
+        "y": 16,
+        "w": 188,
+        "h": 40
+      },
+      "note": "white two-wordmark graffiti ROOMi ROOMi logo, 24px ink height, centered over the sky; the edge ink the measurer sees is the sky photo, not the logo; ships from the user own logo file",
+      "bleed": true
+    },
+    {
+      "id": "nav-right",
+      "kind": "control",
+      "pixelBox": {
+        "x": 1458,
+        "y": 26,
+        "w": 165,
+        "h": 32
+      },
+      "note": "GNB right links: CART (0), MY in white uppercase grotesk"
+    }
+  ]
+}
