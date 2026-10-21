@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 /*
  * The shop room, kept deliberately small and calm: dark concrete, one pink accent, few objects, few lights.
@@ -43,6 +44,8 @@ type Room = {
   setSpin: (on: boolean) => void;
   /** Pointer is over a control: "stage-light", "disco-ball" or "laptop" brighten softly, null for none. */
   setHover: (id: string | null) => void;
+  /** An independent copy of one product (materials cloned, cloth laid flat) for the zoom viewer, centred on its own origin. */
+  cloneProduct: (id: string) => THREE.Group | null;
   /** Keeps only one product (cloth laid flat) at the world origin and returns its bounds; for product shots. */
   solo: (id: string) => THREE.Box3;
 };
@@ -73,6 +76,8 @@ export function buildRoom(scene: THREE.Scene): Room {
   };
   /** Per-product callbacks that lay a draped cloth flat for the isolated product shot. */
   const flatten: Partial<Record<string, () => void>> = {};
+  /** Same flat layout as `flatten`, but as a fresh geometry so the room's own cloth is left alone. */
+  const flatGeo: Partial<Record<string, () => THREE.BufferGeometry>> = {};
 
   // Soft emissive accents (no bloom): a few strips and lenses, scaled by mood.
   const neons: { mat: THREE.MeshBasicMaterial; base: THREE.Color; gain: number }[] = [];
@@ -124,6 +129,85 @@ export function buildRoom(scene: THREE.Scene): Room {
       }),
     );
   const std = (color: THREE.ColorRepresentation, rough = 0.85, metal = 0) => track(new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal }));
+
+  const rgbOf = (hex: string) => {
+    const n = parseInt(hex.replace("#", ""), 16);
+    return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  };
+  /** Procedural wood: long wavy grain streaks with a few darker rings. "v" turns the grain to run vertically. */
+  const woodMat = (base: string, dark: string, repeat: [number, number], dir: "h" | "v" = "h", rough = 0.5) => {
+    const { c, g } = canvas(512, 512);
+    g.fillStyle = base;
+    g.fillRect(0, 0, 512, 512);
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const dk = rgbOf(dark);
+    for (let i = 0; i < 300; i++) {
+      const y = rnd() * 512;
+      const ph = rnd() * 6;
+      g.strokeStyle = `rgba(${dk},${0.05 + rnd() * 0.2})`;
+      g.lineWidth = 0.5 + rnd() * 2.4;
+      g.beginPath();
+      g.moveTo(0, y);
+      for (let x = 0; x <= 512; x += 32) g.lineTo(x, y + Math.sin(x * 0.014 + ph) * (2 + rnd() * 2.5));
+      g.stroke();
+    }
+    for (let k = 0; k < 4; k++) {
+      const cx = rnd() * 512;
+      const cy = rnd() * 512;
+      for (let r = 4; r < 26; r += 4) {
+        g.strokeStyle = `rgba(${dk},0.1)`;
+        g.lineWidth = 1;
+        g.beginPath();
+        g.ellipse(cx, cy, r * 3.2, r, 0, 0, Math.PI * 2);
+        g.stroke();
+      }
+    }
+    const t = tex(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (dir === "v") {
+      t.center.set(0.5, 0.5);
+      t.rotation = Math.PI / 2;
+    }
+    t.repeat.set(repeat[0], repeat[1]);
+    return track(new THREE.MeshPhysicalMaterial({ map: t, bumpMap: t, bumpScale: 0.7, roughness: rough, clearcoat: 0.3, clearcoatRoughness: 0.45 }));
+  };
+  /** Polished stone / terrazzo: speckled base with optional coloured chips. */
+  const stoneMat = (base: string, specks: string[], count: number, size: number, chips: string[] = [], rough = 0.3) => {
+    const { c, g } = canvas(512, 512);
+    g.fillStyle = base;
+    g.fillRect(0, 0, 512, 512);
+    let seed = 5;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < count; i++) {
+      g.fillStyle = `rgba(${rgbOf(specks[i % specks.length])},${0.15 + rnd() * 0.3})`;
+      g.beginPath();
+      g.arc(rnd() * 512, rnd() * 512, 0.6 + rnd() * size, 0, Math.PI * 2);
+      g.fill();
+    }
+    chips.forEach((col, k) => {
+      for (let i = 0; i < 70; i++) {
+        const x = rnd() * 512;
+        const y = rnd() * 512;
+        g.fillStyle = col;
+        g.beginPath();
+        const n = 5 + Math.floor(rnd() * 3);
+        const r0 = 3 + rnd() * 7;
+        for (let a = 0; a < n; a++) {
+          const ang = (a / n) * Math.PI * 2 + k;
+          const rr = r0 * (0.65 + rnd() * 0.5);
+          g.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr);
+        }
+        g.closePath();
+        g.fill();
+      }
+    });
+    const t = tex(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(1.6, 1.6);
+    return track(new THREE.MeshPhysicalMaterial({ map: t, roughness: rough, clearcoat: 0.85, clearcoatRoughness: 0.12 }));
+  };
+  const brass = () => track(new THREE.MeshStandardMaterial({ color: "#c9a45c", roughness: 0.28, metalness: 1, envMap: scene.environment, envMapIntensity: 1.6 }));
 
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0, parent: THREE.Object3D = scene, shadow = true) => {
     track(geo);
@@ -331,29 +415,111 @@ export function buildRoom(scene: THREE.Scene): Room {
   scene.add(ball);
 
   // ---------- DJ booth ----------
+  const djMats: THREE.MeshStandardMaterial[] = [];
   {
     const g = new THREE.Group();
     g.position.set(0, 0, -3.0);
-    box(3.2, 0.92, 0.8, std("#232027", 0.7, 0.1), 0, 0.46, 0, g);
-    box(3.28, 0.05, 0.88, std("#d9d6da", 0.4, 0.2), 0, 0.945, 0, g);
+    box(3.2, 0.92, 0.8, woodMat("#2a2227", "#0f0b0d", [1, 1], "v", 0.6), 0, 0.46, 0, g);
+    // fluted front: slim vertical slats above the neon strip
+    const flute = woodMat("#34292d", "#120d0f", [0.12, 1], "v", 0.5);
+    for (let i = 0; i < 31; i++) box(0.062, 0.66, 0.026, flute, -1.5 + i * 0.1, 0.55, 0.409, g);
+    box(3.28, 0.05, 0.88, stoneMat("#e6e3ea", ["#9a96a2", "#c9c4cc"], 1800, 1.6, [], 0.3), 0, 0.945, 0, g);
+    box(3.24, 0.014, 0.84, brass(), 0, 0.915, 0, g);
     box(3.0, 0.016, 0.016, neonMat("#ff3d8a", 1.2), 0, 0.12, 0.405, g).castShadow = false;
     const dark = std("#1a1618", 0.4, 0.3);
-    tag(rbox(0.78, 0.05, 0.42, 0.012, dark, 0, 1.0, 0.02, g), "dj-controller");
+    // Stand-in controller, replaced by the real model (public/models/dj-controller.glb) as soon as it has loaded.
+    const standIn = new THREE.Group();
+    g.add(standIn);
+    rbox(0.78, 0.05, 0.42, 0.012, dark, 0, 1.0, 0.02, standIn);
     for (const x of [-0.22, 0.22]) {
-      cyl(0.1, 0.1, 0.018, std("#2c2630", 0.3, 0.6), x, 1.035, 0.03, g, 32).userData.part = "dj-controller";
-      cyl(0.032, 0.032, 0.02, neonMat("#f71d64", 1), x, 1.04, 0.03, g, 20).userData.part = "dj-controller";
+      cyl(0.1, 0.1, 0.018, std("#2c2630", 0.3, 0.6), x, 1.035, 0.03, standIn, 32);
+      cyl(0.032, 0.032, 0.02, neonMat("#f71d64", 1), x, 1.04, 0.03, standIn, 20);
     }
-    hitBox(0.9, 0.2, 0.55, 0, 1.05, 0.02, g, "dj-controller");
+    // click target sized to the real model (opened case, scaled up so it reads from across the room)
+    const DJ_SCALE = 1.8;
+    hitBox(1.1, 0.48, 0.88, 0, 0.97 + 0.24, 0.0, g, "dj-controller");
+    new GLTFLoader().load("/models/dj-controller.glb", (gltf) => {
+      const model = gltf.scene;
+      model.scale.setScalar(DJ_SCALE);
+      model.position.set(0, 0.97, 0.01);
+      model.userData.part = "dj-controller";
+      model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        m.castShadow = true;
+        m.receiveShadow = true;
+        const mat = m.material as THREE.MeshStandardMaterial;
+        mat.envMap = scene.environment;
+        mat.side = THREE.FrontSide;
+        // ROOMi "Black" edition: ink-black lacquer body, brushed silver, pink / purple / peach accents
+        const paint = (hex: string, rough: number, metal = 0, env = 1) => {
+          mat.map = null;
+          mat.color.set(hex);
+          mat.roughness = rough;
+          mat.metalness = metal;
+          mat.envMapIntensity = env;
+        };
+        switch (mat.name) {
+          case "stone": // the case shell
+            paint("#5b2f86", 0.28, 0.12, 1.5);
+            break;
+          case "cover_band": // trim ring around the case
+            paint("#f71d64", 0.35, 0.2, 1.2);
+            break;
+          case "controller": // main body
+            paint("#2a2430", 0.38, 0.15, 1.2);
+            break;
+          case "jog": // jog wheel tops
+            paint("#15111a", 0.25, 0.25, 1.4);
+            break;
+          case "satin_metal": // wheel rims, rails, screws
+            paint("#c9c6d1", 0.28, 0.9, 1.7);
+            break;
+          case "knob":
+            paint("#ffb792", 0.4, 0.1, 1);
+            break;
+          case "slider":
+            paint("#c14ed4", 0.4, 0.15, 1);
+            break;
+          case "pads":
+            paint("#ff5c93", 0.3, 0.05, 1);
+            mat.emissive = new THREE.Color("#f71d64");
+            mat.emissiveIntensity = 0.45;
+            break;
+          case "indicator":
+            paint("#ffb792", 0.5, 0, 1);
+            mat.emissive = new THREE.Color("#ffb792");
+            mat.emissiveIntensity = 0.8;
+            break;
+          case "display":
+            mat.roughness = 0.35;
+            mat.emissive = new THREE.Color("#ffffff");
+            mat.emissiveMap = mat.map;
+            mat.emissiveIntensity = 0.55;
+            break;
+          default:
+            mat.roughness = 0.42;
+        }
+        mat.needsUpdate = true;
+        mat.userData.baseEmissive = mat.emissive.clone();
+        mat.userData.baseEmissiveIntensity = mat.emissiveIntensity;
+        djMats.push(mat);
+      });
+      g.add(model);
+      g.remove(standIn);
+    });
     scene.add(g);
 
     for (const sx of [-1, 1]) {
       const sp = new THREE.Group();
       sp.position.set(sx * 2.25, 0, -3.05);
       sp.rotation.y = -sx * 0.22;
-      rbox(0.55, 1.2, 0.46, 0.025, std("#16131a", 0.6), 0, 0.6, 0, sp);
+      rbox(0.55, 1.2, 0.46, 0.025, fabric("#16131a", [3, 6], 0.7), 0, 0.6, 0, sp);
       for (const [y, r] of [[0.42, 0.17], [0.9, 0.075]] as const) {
         cyl(r + 0.03, r + 0.03, 0.03, std("#0b090c", 0.7), 0, y, 0.235, sp, 36).rotation.x = Math.PI / 2;
         cyl(r, r * 0.8, 0.03, std("#2a252c", 0.4, 0.3), 0, y, 0.245, sp, 36).rotation.x = Math.PI / 2;
+        add(new THREE.TorusGeometry(r * 0.8, r * 0.1, 8, 36), std("#0b090c", 0.9), 0, y, 0.262, sp);
+        add(new THREE.SphereGeometry(r * 0.34, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), std("#34303a", 0.35, 0.4), 0, y, 0.256, sp).rotation.x = Math.PI / 2;
       }
       scene.add(sp);
     }
@@ -409,16 +575,159 @@ export function buildRoom(scene: THREE.Scene): Room {
     for (const x of [-0.6, 0.6]) rbox(1.15, 0.22, 0.84, 0.1, velvetL, x, 0.52, 0.06, g);
     for (const x of [-0.6, 0.6]) rbox(1.15, 0.52, 0.28, 0.11, velvetL, x, 0.84, -0.34, g).rotation.x = -0.14;
     for (const x of [-1.24, 1.24]) rbox(0.24, 0.64, 1.0, 0.09, velvet, x, 0.5, 0, g);
-    for (const x of [-1.1, 1.1]) for (const z of [-0.4, 0.4]) cyl(0.03, 0.022, 0.12, std("#bfa05a", 0.3, 0.9), x, 0.05, z, g, 12);
+    const legWood = woodMat("#4a3426", "#21140d", [1, 1], "v", 0.45);
+    for (const x of [-1.1, 1.1]) {
+      for (const z of [-0.4, 0.4]) {
+        cyl(0.036, 0.022, 0.14, legWood, x, 0.07, z, g, 14);
+        cyl(0.024, 0.024, 0.014, brass(), x, 0.007, z, g, 14);
+      }
+    }
+    // piping along the seat fronts and tops of the backs, seams down the backrests, plinth shadow line
+    const pipe = std("#34283f", 0.85);
+    for (const x of [-0.6, 0.6]) {
+      cyl(0.0085, 0.0085, 1.1, pipe, x, 0.612, 0.478, g, 8).rotation.z = Math.PI / 2;
+      cyl(0.0085, 0.0085, 1.08, pipe, x, 1.1, -0.38, g, 8).rotation.z = Math.PI / 2;
+      const back = new THREE.Group();
+      back.position.set(x, 0.84, -0.34);
+      back.rotation.x = -0.14;
+      for (const sx of [-0.27, 0, 0.27]) box(0.005, 0.38, 0.004, pipe, sx, 0.02, 0.141, back);
+      g.add(back);
+    }
+    for (const x of [-1.24, 1.24]) cyl(0.0085, 0.0085, 0.9, pipe, x, 0.835, 0, g, 8).rotation.x = Math.PI / 2;
+    box(2.46, 0.03, 0.96, std("#1b1422", 0.9), 0, 0.085, 0, g);
+    // throw pillow against the left arm
+    {
+      const pil = rbox(0.34, 0.34, 0.12, 0.05, velvetMat("#c6806c", "#ffb792", [2, 2]), -0.98, 0.84, -0.1, g);
+      pil.rotation.set(-0.16, 0.38, 0.16);
+      cyl(0.006, 0.006, 0.01, brass(), -0.98, 0.84, -0.04, g, 8).rotation.x = Math.PI / 2;
+    }
 
-    // cap on the seat (a product)
+    // cap on the seat (a product): six-panel baseball cap with seams, button, eyelets, stitched brim, back strap and a front mark
     {
       const cg = new THREE.Group();
-      cg.position.set(0.62, 0.65, 0.14);
-      cg.rotation.set(-0.12, 0.5, 0.06);
-      const capMat = fabric("#f71d64", [8, 8], 0.8);
-      tag(add(new THREE.SphereGeometry(0.115, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), capMat, 0, 0, 0, cg), "cap");
-      tag(add(new THREE.CylinderGeometry(0.105, 0.105, 0.012, 32, 1, false, -Math.PI / 2, Math.PI), capMat, 0, 0.002, 0.07, cg), "cap").scale.set(1.15, 1, 1.3);
+      cg.position.set(0.62, 0.66, 0.14);
+      cg.rotation.set(-0.06, 0.5, 0.03);
+      const R = 0.112;
+      const SY = 0.84;
+      const capMat = fabric("#f71d64", [10, 10], 0.82);
+      const seamMat = std("#d3135a", 0.85);
+      const light = std("#ffd9e6", 0.8);
+      const part = <T extends THREE.Object3D>(o: T) => tag(o, "cap");
+      // crown
+      part(add(new THREE.SphereGeometry(R, 56, 28, 0, Math.PI * 2, 0, Math.PI / 2), capMat, 0, 0, 0, cg)).scale.set(1, SY, 1);
+      // panel seams (meridians) with a darker, raised thread and a topstitch beside each
+      for (let k = 0; k < 6; k++) {
+        const th = (k * Math.PI) / 3;
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i <= 20; i++) {
+          const ph = (i / 20) * (Math.PI / 2 - 0.02);
+          pts.push(new THREE.Vector3(R * 1.004 * Math.sin(ph) * Math.sin(th), R * SY * 1.004 * Math.cos(ph), R * 1.004 * Math.sin(ph) * Math.cos(th)));
+        }
+        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 28, 0.0016, 5), seamMat, 0, 0, 0, cg, false));
+        for (const d of [-0.05, 0.05]) {
+          const sp: THREE.Vector3[] = [];
+          for (let i = 1; i <= 18; i++) {
+            const ph = (i / 20) * (Math.PI / 2 - 0.03);
+            const t2 = th + d / Math.max(Math.sin(ph), 0.25);
+            sp.push(new THREE.Vector3(R * 1.003 * Math.sin(ph) * Math.sin(t2), R * SY * 1.003 * Math.cos(ph), R * 1.003 * Math.sin(ph) * Math.cos(t2)));
+          }
+          part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp), 28, 0.0007, 4), light, 0, 0, 0, cg, false));
+        }
+      }
+      // eyelets on the four back and side panels
+      for (const th of [Math.PI / 2, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (3 * Math.PI) / 2]) {
+        const ph = 0.62;
+        const e = part(add(new THREE.SphereGeometry(0.0062, 10, 6), std("#a80f47", 0.6), R * 1.002 * Math.sin(ph) * Math.sin(th), R * SY * Math.cos(ph), R * 1.002 * Math.sin(ph) * Math.cos(th), cg, false));
+        e.scale.set(1, 1, 0.45);
+        e.lookAt(0, R * SY * Math.cos(ph) * 0.5, 0);
+      }
+      // button
+      part(add(new THREE.SphereGeometry(0.0125, 16, 10), capMat, 0, R * SY + 0.0015, 0, cg, false)).scale.y = 0.7;
+      // bottom binding showing at the rim
+      part(add(new THREE.TorusGeometry(R * 0.998, 0.0045, 8, 56), std("#f4f2f5", 0.7), 0, 0.002, 0, cg, false)).rotation.x = Math.PI / 2;
+      // brim: its back edge hugs the crown's bottom circle, the front is a rounded visor, bent down at the sides
+      {
+        const XE = 0.108;
+        const yb = (x: number) => Math.sqrt(Math.max(R * R - x * x, 0)) - 0.014;
+        const c1 = new THREE.CubicBezierCurve(new THREE.Vector2(-XE, yb(-XE)), new THREE.Vector2(-0.118, 0.175), new THREE.Vector2(-0.06, 0.226), new THREE.Vector2(0, 0.226));
+        const c2 = new THREE.CubicBezierCurve(new THREE.Vector2(0, 0.226), new THREE.Vector2(0.06, 0.226), new THREE.Vector2(0.118, 0.175), new THREE.Vector2(XE, yb(XE)));
+        const sh = new THREE.Shape();
+        sh.moveTo(-XE, yb(-XE));
+        sh.bezierCurveTo(-0.118, 0.175, -0.06, 0.226, 0, 0.226);
+        sh.bezierCurveTo(0.06, 0.226, 0.118, 0.175, XE, yb(XE));
+        for (let i = 1; i <= 24; i++) {
+          const x = XE - (i / 24) * 2 * XE;
+          sh.lineTo(x, yb(x));
+        }
+        const bend = (x: number) => 2.1 * x * x;
+        const place = new THREE.Matrix4().makeTranslation(0, 0.017, 0).multiply(new THREE.Matrix4().makeRotationX(0.07));
+        // flat shape (x, y) -> world (x, bent height, y): a top sheet, a darker underside sheet 3.5mm below, and a rounded edge between
+        const sheet = (dy: number) => {
+          const gm = new THREE.ShapeGeometry(sh, 32);
+          const pp = gm.attributes.position;
+          for (let i = 0; i < pp.count; i++) {
+            const x = pp.getX(i);
+            const z = pp.getY(i);
+            pp.setXYZ(i, x, -bend(x) + dy, z);
+          }
+          gm.computeVertexNormals();
+          gm.applyMatrix4(place);
+          return gm;
+        };
+        const topMat = fabric("#f71d64", [4, 4], 0.78);
+        topMat.side = THREE.DoubleSide;
+        const underMat = std("#c4124f", 0.85);
+        underMat.side = THREE.DoubleSide;
+        part(add(sheet(0), topMat, 0, 0, 0, cg));
+        part(add(sheet(-0.0035), underMat, 0, 0, 0, cg, false));
+        const edge = sh.getPoints(60).map((p) => new THREE.Vector3(p.x, -bend(p.x) - 0.00175, p.y).applyMatrix4(place));
+        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge, true), 160, 0.0021, 6, true), seamMat, 0, 0, 0, cg, false));
+        const front = [...c1.getPoints(24), ...c2.getPoints(24).slice(1)].filter((p) => p.y > 0.13);
+        for (const k of [0.95, 0.88, 0.81]) {
+          const v = front.map((p) => {
+            const x = p.x * k;
+            const z = 0.118 + (p.y - 0.118) * k;
+            return new THREE.Vector3(x, -bend(x) + 0.0006, z).applyMatrix4(place);
+          });
+          part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v), 60, 0.0006, 4), light, 0, 0, 0, cg, false));
+        }
+      }
+      // back strap with a small metal slide
+      {
+        const strap = part(add(new THREE.BoxGeometry(0.075, 0.018, 0.005), std("#f0eef2", 0.8), 0, 0.028, -R * 0.985, cg, false));
+        strap.rotation.x = 0.12;
+        part(add(new THREE.BoxGeometry(0.022, 0.02, 0.008), brass(), 0.012, 0.028, -R * 0.99, cg, false));
+      }
+      // small front mark on the crown, following its slope
+      {
+        const { c, g: cx } = canvas(256, 112);
+        const paint = () => {
+          cx.clearRect(0, 0, 256, 112);
+          cx.fillStyle = "#fff3f7";
+          cx.textAlign = "center";
+          cx.textBaseline = "middle";
+          cx.font = '900 70px "Pretendard Variable", "Arial Black", sans-serif';
+          cx.fillText("ROOMi", 128, 56);
+        };
+        paint();
+        const tt = tex(c);
+        document.fonts?.ready.then(() => {
+          paint();
+          tt.needsUpdate = true;
+        });
+        const ph = 1.12;
+        const mark = add(
+          new THREE.PlaneGeometry(0.092, 0.0402),
+          track(new THREE.MeshBasicMaterial({ map: tt, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })),
+          0,
+          R * SY * Math.cos(ph),
+          R * Math.sin(ph) * 1.022,
+          cg,
+          false,
+        );
+        mark.rotation.x = -(Math.PI / 2 - ph) * 0.96;
+        mark.userData.part = "cap";
+      }
       hitBox(0.34, 0.2, 0.34, 0, 0.05, 0.05, cg, "cap");
       g.add(cg);
     }
@@ -483,6 +792,22 @@ export function buildRoom(scene: THREE.Scene): Room {
         }
         geo.computeVertexNormals();
         pos.needsUpdate = true;
+      };
+      flatGeo["slogan-towel"] = () => {
+        const g2 = geo.clone();
+        const p2 = g2.attributes.position;
+        const base = new THREE.PlaneGeometry(1, 1, SX, SS).attributes.position;
+        for (let i = 0; i < p2.count; i++) {
+          const u = base.getX(i) + 0.5;
+          const sv = 0.5 - base.getY(i);
+          p2.setXYZ(i, (u - 0.5) * 0.62, (0.5 - sv) * 1.82, Math.sin(sv * 5 + u * 3) * 0.018 + Math.sin(u * 9 + sv * 2) * 0.008);
+        }
+        g2.computeVertexNormals();
+        // the copied geometry still carries the sofa-side bounding sphere: recompute it or the viewer culls the flat cloth
+        g2.computeBoundingBox();
+        g2.computeBoundingSphere();
+        g2.userData.own = true;
+        return g2;
       };
       const cloth = tag(add(geo, mat, 0, 0, 0, g), "slogan-towel");
       cloth.castShadow = false;
@@ -561,6 +886,22 @@ export function buildRoom(scene: THREE.Scene): Room {
         geo.computeVertexNormals();
         pos.needsUpdate = true;
       };
+      flatGeo["bandana"] = () => {
+        const g2 = geo.clone();
+        const p2 = g2.attributes.position;
+        const base = new THREE.PlaneGeometry(1, 1, 22, 26).attributes.position;
+        for (let i = 0; i < p2.count; i++) {
+          const u = base.getX(i) + 0.5;
+          const sv = 0.5 - base.getY(i);
+          p2.setXYZ(i, (u - 0.5) * 0.5, (0.5 - sv) * 0.5, Math.sin(u * 8 + sv * 5) * 0.016 + Math.sin(u * 3 - sv * 4) * 0.012);
+        }
+        g2.computeVertexNormals();
+        // the copied geometry still carries the sofa-side bounding sphere: recompute it or the viewer culls the flat cloth
+        g2.computeBoundingBox();
+        g2.computeBoundingSphere();
+        g2.userData.own = true;
+        return g2;
+      };
       const cloth = tag(add(geo, mat, 0, 0, 0, g), "bandana");
       cloth.castShadow = false;
       hitBox(0.3, 0.55, 0.55, 1.28, 0.62, 0.12, g, "bandana");
@@ -574,8 +915,28 @@ export function buildRoom(scene: THREE.Scene): Room {
     const g = new THREE.Group();
     g.position.set(-W + 2.0, 0, -1.3);
     g.rotation.y = 0.12;
-    cyl(1, 1, 0.07, track(new THREE.MeshPhysicalMaterial({ color: "#d9d4d0", roughness: 0.45, clearcoat: 0.25, clearcoatRoughness: 0.4 })), 0, 0.46, 0, g, 48).scale.set(0.9, 1, 0.58);
-    for (const x of [-0.45, 0.45]) cyl(0.09, 0.12, 0.43, std("#262329", 0.4, 0.6), x, 0.22, 0, g, 24);
+    // terrazzo top; the side is plain lacquer so the texture does not smear into streaks
+    const tableSide = track(new THREE.MeshPhysicalMaterial({ color: "#ece7e2", roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.15 }));
+    const tableTop = stoneMat("#e9e4df", ["#a39a94", "#cfc6bf"], 1400, 1.2, ["#f71d64", "#c14ed4", "#ffb792", "#6b6470"], 0.26);
+    tableTop.map!.repeat.set(2.4, 2.4);
+    cyl(1, 1, 0.07, tableSide, 0, 0.46, 0, g, 64).scale.set(0.9, 1, 0.58);
+    {
+      const topDisc = add(new THREE.CircleGeometry(1, 64), tableTop, 0, 0.4955, 0, g, false);
+      topDisc.rotation.x = -Math.PI / 2;
+      topDisc.scale.set(0.9, 0.58, 1);
+      topDisc.receiveShadow = true;
+    }
+    // brass edge bands
+    for (const y of [0.4955, 0.4255]) {
+      const rim = add(new THREE.TorusGeometry(1, 0.011, 8, 96), brass(), 0, y, 0, g, false);
+      rim.rotation.x = Math.PI / 2;
+      rim.scale.set(0.9, 0.58, 1);
+    }
+    for (const x of [-0.45, 0.45]) {
+      cyl(0.09, 0.12, 0.43, std("#262329", 0.4, 0.6), x, 0.22, 0, g, 28);
+      cyl(0.1, 0.1, 0.012, brass(), x, 0.428, 0, g, 28);
+      cyl(0.13, 0.13, 0.012, brass(), x, 0.008, 0, g, 28);
+    }
     box(0.42, 0.045, 0.42, std("#c9a26a", 0.9), -0.45, 0.52, -0.08, g).rotation.y = 0.35;
     cyl(0.17, 0.17, 0.02, std("#e7b04a", 0.8), -0.45, 0.555, -0.08, g, 24);
     const glassM = track(new THREE.MeshPhysicalMaterial({ color: "#ffffff", roughness: 0.05, transparent: true, opacity: 0.26, clearcoat: 1 }));
@@ -618,7 +979,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     const g = new THREE.Group();
     g.position.set(W - 0.32, 0, -1.6);
     g.rotation.y = -Math.PI / 2;
-    const frame = std("#17121a", 0.45, 0.3);
+    const frame = woodMat("#3a2a24", "#1b100c", [1, 1], "v", 0.42);
     const cw = 0.54;
     const cols = 3;
     const rows = 2;
@@ -824,6 +1185,8 @@ export function buildRoom(scene: THREE.Scene): Room {
   let hLight = 0;
   let hBall = 0;
   let hLap = 0;
+  let hDj = 0;
+  const pinkGlow = new THREE.Color("#f71d64");
   const setMood = (m: Mood) => {
     const v = {
       off: { sun: 2.4, sunC: "#ffd2ac", hemi: 0.95, env: 0.45, ex: 0.95, stage: 0, neon: 0.7, spots: 0, a: "#555055", b: "#555055" },
@@ -859,6 +1222,42 @@ export function buildRoom(scene: THREE.Scene): Room {
     },
     setHover(id: string | null) {
       hoverId = id;
+    },
+    cloneProduct(id: string) {
+      const parts: THREE.Object3D[] = [];
+      scene.traverse((o) => {
+        if (o.userData.part === id && o.visible) parts.push(o);
+      });
+      if (!parts.length) return null;
+      scene.updateMatrixWorld(true);
+      const out = new THREE.Group();
+      const flat = flatGeo[id];
+      for (const o of parts) {
+        const c = o.clone(true);
+        const m4 = o.matrixWorld.clone();
+        if (flat && (o as THREE.Mesh).isMesh) {
+          (c as THREE.Mesh).geometry = flat();
+          m4.identity();
+        }
+        c.traverse((n) => {
+          const mesh = n as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          const one = (m: THREE.Material) => {
+            const k = m.clone();
+            // the room's environment map belongs to the main renderer; the viewer lights these from its own
+            if ("envMap" in k) (k as THREE.MeshStandardMaterial).envMap = null;
+            return k;
+          };
+          mesh.material = Array.isArray(mesh.material) ? mesh.material.map(one) : one(mesh.material);
+          mesh.castShadow = false;
+          mesh.receiveShadow = false;
+        });
+        c.matrix.copy(m4);
+        c.matrix.decompose(c.position, c.quaternion, c.scale);
+        c.visible = true;
+        out.add(c);
+      }
+      return out;
     },
     solo(id: string) {
       let parts: THREE.Object3D[] = [];
@@ -896,6 +1295,12 @@ export function buildRoom(scene: THREE.Scene): Room {
       // hover feedback: the lens lights up, the ball brightens, both eased
       hLight += ((hoverId === "stage-light" ? 1 : 0) - hLight) * Math.min(1, dt * 10);
       hBall += ((hoverId === "disco-ball" ? 1 : 0) - hBall) * Math.min(1, dt * 10);
+      hDj += ((hoverId === "dj-controller" ? 1 : 0) - hDj) * Math.min(1, dt * 10);
+      for (const m of djMats) {
+        // hovering lights the whole controller softly in the brand pink, on top of whatever it already emits
+        m.emissive.copy(m.userData.baseEmissive).lerp(pinkGlow, hDj * 0.5);
+        m.emissiveIntensity = (m.userData.baseEmissiveIntensity as number) + hDj * 0.35;
+      }
       hLap += ((hoverId === "laptop" ? 1 : 0) - hLap) * Math.min(1, dt * 10);
       lapMat.color.setScalar(0.85 + hLap * 0.45);
       (lapGlow.material as THREE.SpriteMaterial).opacity = hLap * 0.5;

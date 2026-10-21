@@ -115,12 +115,61 @@
   pointer-events: none;
 }
 
-.panel {
+/* Product view: the room behind is blurred and dimmed, the model turns on the left, the details sit on the right. */
+.modal {
   position: absolute;
-  top: 96px;
-  right: clamp(16px, 3vw, 44px);
+  inset: 0;
   z-index: 4;
-  width: min(380px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 64px);
+  padding: 84px clamp(16px, 4vw, 64px) 32px;
+  background: rgb(16 11 16 / 0.52);
+  backdrop-filter: blur(18px) saturate(0.85);
+  animation: modalIn 0.35s var(--ease-out) both;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.viewer {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 820px;
+  height: min(72vh, 680px);
+  /* a faint pool of brand light under the product */
+  background: radial-gradient(ellipse 60% 42% at 50% 78%, rgb(247 29 100 / 0.22), transparent 70%), radial-gradient(ellipse 50% 50% at 50% 40%, rgb(193 78 212 / 0.16), transparent 72%);
+  cursor: grab;
+}
+
+.viewer:active {
+  cursor: grabbing;
+}
+
+.viewerHint {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  margin: 0;
+  translate: -50% 0;
+  color: rgb(240 240 240 / 0.6);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.panel {
+  position: relative;
+  flex: none;
+  width: min(380px, 100%);
   display: grid;
   gap: 12px;
   padding: 24px;
@@ -247,18 +296,27 @@
   cursor: pointer;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
+  .modal {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 70px 12px 12px;
+    overflow-y: auto;
+  }
+
+  .viewer {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    height: min(40vh, 360px);
+  }
+
   .panel {
-    top: auto;
-    right: 8px;
-    bottom: 84px;
-    left: 8px;
-    width: auto;
+    width: 100%;
     padding: 18px;
   }
 }
-
-
 
 /* "Change" tag that follows the pointer over the stage lights and the disco ball */
 .tip {

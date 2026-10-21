@@ -8,6 +8,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { productById, type Product } from "@/content/products";
 import { useCart } from "@/lib/store";
 import ContainerGate from "./ContainerGate";
+import ProductViewer from "./ProductViewer";
 import { buildRoom, VIEWS, VIEWS_PORTRAIT, type Mood } from "./room";
 import styles from "./ShopScene.module.css";
 
@@ -22,7 +23,13 @@ const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
  */
 export default function ShopScene() {
   const mount = useRef<HTMLDivElement>(null);
-  const api = useRef<{ setMood: (m: Mood) => void; setSpin: (on: boolean) => void; select: (id: string | null) => void } | null>(null);
+  const api = useRef<{
+    setMood: (m: Mood) => void;
+    setSpin: (on: boolean) => void;
+    select: (id: string | null) => void;
+    cloneProduct: (id: string) => THREE.Group | null;
+  } | null>(null);
+  const makeModel = useCallback((id: string) => api.current?.cloneProduct(id) ?? null, []);
   const { add } = useCart();
   const router = useRouter();
   const [mood, setMood] = useState<Mood>("off");
@@ -281,6 +288,7 @@ export default function ShopScene() {
       select: (id) => {
         selected = id;
       },
+      cloneProduct: (id) => room.cloneProduct(id),
     };
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -387,43 +395,49 @@ export default function ShopScene() {
       {!gone && <ContainerGate pct={pct} open={ready} onGone={() => setGone(true)} />}
 
       {product && (
-        <aside className={styles.panel} aria-label={`${product.name} 상세`}>
-          <button type="button" className={styles.close} onClick={() => setProduct(null)} aria-label="상세 닫기">
-            Close ×
-          </button>
-          <p className={styles.no}>
-            RMV-{product.no} · {product.kind === "Hardware" ? "Gear" : "Goods"}
-          </p>
-          <h2>{product.name}</h2>
-          <p className={styles.summary}>{product.summary}</p>
-          <p className={styles.price}>
-            {won(product.price)} <span>Sample price</span>
-          </p>
-          <fieldset className={styles.options}>
-            <legend>Option</legend>
-            {product.options.map((o) => (
-              <label key={o}>
-                <input type="radio" name="opt" checked={option === o} onChange={() => setOption(o)} />
-                <span>{o}</span>
-              </label>
-            ))}
-          </fieldset>
-          <button
-            type="button"
-            className={styles.addBtn}
-            onClick={() => {
-              add({ productId: product.id, option, qty: 1 });
-              setAdded(true);
-            }}
-          >
-            {added ? "Added ✓" : "Add to cart"}
-          </button>
-          {added && (
-            <Link href="/cart" className={styles.toCart}>
-              Go to cart →
-            </Link>
-          )}
-        </aside>
+        <div className={styles.modal} onClick={(e) => e.target === e.currentTarget && setProduct(null)}>
+          <div className={styles.viewer}>
+            <ProductViewer id={product.id} make={makeModel} />
+            <p className={styles.viewerHint}>Drag to rotate</p>
+          </div>
+          <aside className={styles.panel} aria-label={`${product.name} 상세`}>
+            <button type="button" className={styles.close} onClick={() => setProduct(null)} aria-label="상세 닫기">
+              Close ×
+            </button>
+            <p className={styles.no}>
+              RMV-{product.no} · {product.kind === "Hardware" ? "Gear" : "Goods"}
+            </p>
+            <h2>{product.name}</h2>
+            <p className={styles.summary}>{product.summary}</p>
+            <p className={styles.price}>
+              {won(product.price)} <span>Sample price</span>
+            </p>
+            <fieldset className={styles.options}>
+              <legend>Option</legend>
+              {product.options.map((o) => (
+                <label key={o}>
+                  <input type="radio" name="opt" checked={option === o} onChange={() => setOption(o)} />
+                  <span>{o}</span>
+                </label>
+              ))}
+            </fieldset>
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={() => {
+                add({ productId: product.id, option, qty: 1 });
+                setAdded(true);
+              }}
+            >
+              {added ? "Added ✓" : "Add to cart"}
+            </button>
+            {added && (
+              <Link href="/cart" className={styles.toCart}>
+                Go to cart →
+              </Link>
+            )}
+          </aside>
+        </div>
       )}
     </div>
   );
