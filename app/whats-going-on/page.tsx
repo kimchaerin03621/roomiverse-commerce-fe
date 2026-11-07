@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ObiBand from "@/components/site/ObiBand";
+import StackScroll from "@/components/site/StackScroll";
 import PageHead from "@/components/site/PageHead";
 import SiteFooter from "@/components/site/SiteFooter";
 import Disc from "@/components/site/Disc";
@@ -37,8 +38,16 @@ function Photo({ className, src, alt, pos }: { className: string; src: string; a
 export default function WhatsGoingOn() {
   return (
     <main className={styles.page}>
-      <PageHead title="ROOMi SCENE" standfirst="Different ways to gather, listen and party. 여섯 가지 장면 중 나와 닮은 파티를 찾아보세요." />
-      <ObiBand tracks={PARTIES.map((p) => ({ id: p.slug, label: p.short }))} />
+      <ObiBand
+        tracks={PARTIES.map((p) => ({ id: p.slug, label: p.short }))}
+        inks={Object.fromEntries(PARTIES.map((p) => [p.slug, p.slug === "rave-party" ? "paper" : "ink"]))}
+      />
+      <StackScroll selector="[data-layout], [data-head]" />
+      <div className={styles.stack}>
+        {/* the title block is the first sheet: House slides up over it like every other scene */}
+        <div className={styles.headSheet} data-head>
+          <PageHead title="ROOMi SCENE" standfirst="Different ways to gather, listen and party. 여섯 가지 장면 중 나와 닮은 파티를 찾아보세요." />
+        </div>
 
       {PARTIES.map((party) => {
         const dark = party.slug === "rave-party";
@@ -105,6 +114,7 @@ export default function WhatsGoingOn() {
           </section>
         );
       })}
+      </div>
 
       <SiteFooter />
     </main>

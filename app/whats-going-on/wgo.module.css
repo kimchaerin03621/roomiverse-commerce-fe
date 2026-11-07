@@ -22,7 +22,8 @@
   --fs-body: clamp(16px, 1.1vw, 17px);
   --fs-label: 13px;
   --pink-ink: #c4124e; /* the pink, darkened enough to carry small text on paper (5.5:1) */
-  position: relative;
+  position: sticky; /* each sheet pins once read; the next one slides up over it (see StackScroll) */
+  top: var(--stick, 0px);
   scroll-margin-top: 92px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -30,8 +31,88 @@
   padding: clamp(64px, 8vw, 112px) var(--pad);
 }
 
-.scene + .scene {
-  border-top: 1px solid rgb(17 17 17 / 0.1);
+
+/*
+ * Scenes are told apart by form, not colour: each one is a sheet of paper laid over the one before it
+ * (rounded top edge, soft shadow, a slightly different grey). Rave is the one sheet that turns the lights off.
+ */
+.stack {
+  position: relative;
+  isolation: isolate;
+}
+
+/* The title block: the first sheet of the stack, pinned while House slides up over it. */
+.headSheet {
+  position: sticky;
+  top: var(--stick, 0px);
+  z-index: 0;
+  background: var(--paper);
+  /* room for the overlap and the sheet's shadow, so the title never sits under them */
+  padding-bottom: clamp(88px, 9vw, 130px);
+}
+
+.scene {
+  --lap: clamp(24px, 3vw, 44px); /* how far a sheet rides up over the previous one */
+  z-index: var(--z, 1);
+  margin-top: calc(var(--lap) * -1);
+  padding-top: calc(clamp(64px, 8vw, 112px) + var(--lap));
+  border-radius: var(--lap) var(--lap) 0 0;
+  background: var(--sheet, var(--paper));
+  /* a tight dark edge plus a wide soft one, so the sheet reads as lifted off the one below */
+  box-shadow:
+    0 -3px 8px rgb(17 17 17 / 0.28),
+    0 -22px 56px rgb(17 17 17 / 0.34),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+.scene {
+  --soft: #111; /* body copy on a coloured card: full ink, the usual greys are too weak on pink and purple */
+  --hash: var(--ink);
+}
+
+.scene[data-layout="house-party"] {
+  --z: 1;
+  --sheet: var(--pink);
+}
+
+.scene[data-layout="listening-party"] {
+  --z: 2;
+  --sheet: var(--paper);
+  --hash: var(--pink);
+}
+
+.scene[data-layout="day-party"] {
+  --z: 3;
+  --sheet: var(--peach);
+}
+
+.scene[data-layout="themed-party"] {
+  --z: 4;
+  --sheet: var(--purple);
+}
+
+.scene[data-layout="rave-party"] {
+  --z: 5;
+  --sheet: #0c1215;
+  --hash: var(--pink);
+  color: var(--paper);
+  box-shadow:
+    0 -3px 8px rgb(0 0 0 / 0.45),
+    0 -22px 56px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+.scene[data-layout="after-party"] {
+  --z: 6;
+  --sheet: linear-gradient(135deg, var(--pink) 0%, var(--purple) 100%);
+}
+
+.scene[data-layout="rave-party"] .sceneNo {
+  opacity: 0.7;
+}
+
+.scene[data-layout="rave-party"] .tags li {
+  color: var(--paper);
 }
 
 .media,
@@ -213,7 +294,7 @@
 .tags li::before {
   content: "#";
   margin-right: 1px;
-  color: var(--pink);
+  color: var(--hash, var(--pink));
 }
 
 .desc {
@@ -221,7 +302,7 @@
   max-width: 44ch;
   font-size: var(--fs-body);
   line-height: 1.75;
-  color: #3a3437;
+  color: var(--soft);
   text-wrap: pretty;
 }
 
@@ -299,7 +380,7 @@
   margin: 0;
   font-size: var(--fs-body);
   line-height: 1.5;
-  color: #4a4448;
+  color: var(--soft, #4a4448);
   text-wrap: balance;
 }
 
@@ -624,5 +705,12 @@
 @media (prefers-reduced-motion: reduce) {
   .disc {
     animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .headSheet {
+    position: relative;
   }
 }

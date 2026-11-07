@@ -1,4 +1,5 @@
-/* Vertical page index on the right edge. White text with difference blending reads on light and dark sections. */
+/* Vertical page index on the right edge. By default white text with difference blending reads on light and dark sections;
+   a page that knows each section's colour passes `inks` and gets plain ink or paper text instead. */
 .index {
   position: fixed;
   top: 50%;
@@ -20,6 +21,21 @@
 .index[data-on="true"] {
   opacity: 1;
   pointer-events: auto;
+}
+
+.index[data-ink] {
+  mix-blend-mode: normal;
+  transition:
+    opacity 0.5s var(--ease-out),
+    color 0.35s ease;
+}
+
+.index[data-ink="ink"] {
+  color: var(--ink);
+}
+
+.index[data-ink="paper"] {
+  color: var(--paper);
 }
 
 .index ol {
