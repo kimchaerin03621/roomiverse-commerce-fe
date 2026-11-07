@@ -49,7 +49,7 @@ export default function ShopScene() {
   useLayoutEffect(() => {
     try {
       const stored = Number(sessionStorage.getItem("roomi:gate-t0"));
-      if (stored && Date.now() - stored < 20000) setPct(Math.min(92, Math.round(((Date.now() - stored) / 2600) * 100)));
+      if (stored && Date.now() - stored < 20000) setPct(Math.min(92, Math.round(((Date.now() - stored) / 1000) * 100)));
     } catch {}
   }, []);
 
@@ -112,9 +112,10 @@ export default function ShopScene() {
     };
     place(0);
 
-    // The doors count up from the click in the intro (its time is passed through sessionStorage) and open once
-    // every texture is in and the count has reached 100. A timeout covers a stuck request.
-    const GATE_MS = 2600;
+    // The doors count up from the click in the intro (its time is passed through sessionStorage) and open once the
+    // count has reached 100 and the room's main textures are in. Things that arrive later (the controller model, small
+    // props) appear on their own once loaded; a short cap stops a slow request from holding the doors shut.
+    const GATE_MS = 1000;
     const manager = THREE.DefaultLoadingManager;
     const prev = { onProgress: manager.onProgress, onLoad: manager.onLoad };
     let loaded = false;
@@ -128,9 +129,10 @@ export default function ShopScene() {
     manager.onLoad = () => {
       loaded = true;
     };
+    // the room is usable as soon as the first load wave is in, or after this long at the latest
     const failTimer = window.setTimeout(() => {
       loaded = true;
-    }, 6000);
+    }, 1800);
     let lastShown = -1;
     const gateTick = () => {
       const t = Math.min(1, (Date.now() - t0) / GATE_MS);
@@ -140,7 +142,7 @@ export default function ShopScene() {
         setPct(shown);
       }
       if (shown >= 100) {
-        openTimer = window.setTimeout(() => setReady(true), 250);
+        openTimer = window.setTimeout(() => setReady(true), 120);
         try {
           sessionStorage.removeItem("roomi:gate-t0");
         } catch {}
@@ -181,6 +183,8 @@ export default function ShopScene() {
       if (id === "stage-light") {
         moodRef.current = ORDER[(ORDER.indexOf(moodRef.current) + 1) % ORDER.length];
         setMood(moodRef.current);
+      } else if (id === "lamp") {
+        room.toggleLamps();
       } else if (id === "disco-ball") {
         spinRef.current = !spinRef.current;
         setSpin(spinRef.current);
@@ -225,9 +229,9 @@ export default function ShopScene() {
         // A small tag follows the pointer: "Change" over the stage lights and the disco ball, name and price over products.
         const t = tip.current;
         if (t) {
-          const control = hover === "stage-light" || hover === "disco-ball";
+          const control = hover === "stage-light" || hover === "disco-ball" || hover === "lamp";
           const p = hover && !control && hover !== "laptop" ? productById(hover) : null;
-          const text = control ? "Change" : hover === "laptop" ? "Shop all" : p ? `${p.name} · ${won(p.price)}` : "";
+          const text = hover === "lamp" ? "Lamp" : control ? "Change" : hover === "laptop" ? "Shop all" : p ? `${p.name} · ${won(p.price)}` : "";
           if (t.textContent !== text && text) t.textContent = text;
           t.style.opacity = text ? "1" : "0";
           t.style.transform = `translate(${e.clientX + 16}px, ${e.clientY + 18}px)`;
@@ -305,9 +309,29 @@ export default function ShopScene() {
     document.addEventListener("visibilitychange", onVis);
 
     const glow = new Map<THREE.Object3D, number>();
+    // Automatic quality: if the frames keep coming slowly (an older laptop, integrated graphics), draw fewer pixels.
+    // Steps only go down, and only after a settling period, so a hiccup while the page loads does not lower anything.
+    const baseRatio = Math.min(window.devicePixelRatio, 1.25);
+    const STEPS = [1, 0.8, 0.65, 0.5];
+    let step = 0;
+    let frames = 0;
+    let spent = 0;
     const tick = () => {
       if (!visible) return;
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const raw = clock.getDelta();
+      const dt = Math.min(raw, 0.05);
+      frames++;
+      if (frames > 120 && raw < 0.2) {
+        spent += raw;
+        if (frames % 40 === 0) {
+          if (spent / 40 > 0.03 && step < STEPS.length - 1) {
+            step++;
+            renderer.setPixelRatio(baseRatio * STEPS[step]);
+            size();
+          }
+          spent = 0;
+        }
+      }
       const time = clock.elapsedTime;
       const k = 1 - Math.exp(-dt * 3.2);
       cur.x += (target.x - cur.x) * k;

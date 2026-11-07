@@ -180,3 +180,31 @@
 - 모바일(900px 이하)은 위에 모델, 아래에 패널. 
 - 컨트롤러 색(room.ts djMats switch): 케이스 보라 #5b2f86, 트림 핑크, 본체 잉크블랙, 조그 휠 블랙+은색 림, 패드 핑크(은은한 발광), 노브 피치, 슬라이더 보라. 부스 상판은 다시 밝은 석재(대비용). 상품 옵션 Black/Pink가 있으니 Pink 에디션(케이스 핑크)은 아직 색만 안 바뀜.
 - 2D 샵 상품 이미지(public/products/*.png)는 10/21에 새 3D 모델(칠한 컨트롤러, 새 캡 등)로 다시 렌더(투명 배경 900x1125). 모델을 또 바꾸면 임시 렌더 페이지로 다시 뽑아야 함(room.cloneProduct 사용).
+- ROOMi SCENE(/whats-going-on) 구역 구분(11/02): 겹쳐 올라오는 종이 카드 + 카드마다 브랜드 색 고정(스크롤로 색 안 바뀜): House 핑크 / Listening 라이트그레이(paper) / Day 피치 / Themed 보라 / Rave 블랙 / After 핑크→보라 그라데이션. wgo.module.css 상단 .scene 규칙(--sheet, --soft, --hash). 색 위 글씨는 ink로 통일. 오른쪽 세로 인덱스(ObiBand)는 mix-blend difference라 핑크/보라 위에서 초록빛으로 보임(미수정). 비교안 이미지는 docs/bg-candidates/.
+- ROOMi SCENE 스크롤 모션(11/02): 카드가 sticky로 고정되고 다음 카드가 위로 밀려 올라와 덮음. 카드가 화면보다 길면 끝까지 읽은 뒤(바닥이 화면 바닥에 닿을 때) 고정됨: components/site/StackScroll.tsx가 --stick 계산, wgo.module.css .scene { position: sticky; top: var(--stick) }, 카드 묶음은 .stack div(푸터가 카드 뒤에 안 가려지게). "모션 줄이기"는 일반 배치. 오른쪽 세로 번호(ObiBand)는 inks 프롭으로 카드별 글자색(Rave만 흰색, 나머지 검정), 현재 구역은 스크롤 위치(화면 35% 선 통과)로 판정.
+- ROOMi SCENE 맨 위 제목 블록(PageHead)도 첫 번째 카드(.headSheet, data-head): 고정된 채 House가 위로 밀려 올라와 덮음. House의 특별 처리(각진 모서리·그림자 없음)는 제거해서 다른 카드와 같은 규칙.
+
+## 3D 샵 재질 사진 (11/02)
+- 가구에 ambientCG(CC0) 재질 사진 적용: public/shop3d/mat/ (6세트 color/normal/rough, 라이선스 LICENSE.txt). room.ts의 photoMat()/tileBox() 헬퍼. 소파=벨벳(보라 tint+sheen), 부스=월넛+석재 상판(Terrazzo004), 테이블 상판=컬러 테라조(Terrazzo018), 선반·소파 다리=원목, 스피커=직물.
+- 재질 사진이 필요하면 ambientcg.com API(full_json?id=...&include=downloadData)로 1K-JPG zip을 받음(미리보기·zip은 curl에 User-Agent와 Referer 필요).
+
+## 3D 샵 성능 기준선 (11/04, 배포 빌드, RTX 4060 노트북, 1440x810)
+- 한 프레임: 그리기 요청 약 218회, 삼각형 약 12만, 렌더 패스 1(그림자 맵 1장 포함).
+- CPU만 느리게(구식 흉내): x1 65~75fps, x6 55fps, x12 24fps.
+- 화면 픽셀 4배(2880x1620): 68fps → 25fps. 즉 픽셀당 계산이 무거운 편이라 내장 그래픽에서 약점이 될 가능성이 큼(이 PC로는 직접 못 재서 추정). 의심 지점: MeshPhysical(clearcoat/sheen), 실시간 그림자, CSS 필름 입자(mix-blend overlay 애니메이션), 투명 글로우.
+- 목표: 내장 그래픽 노트북에서 30fps. 방법: 빛 굽기(bake)로 그림자 제거, 그리기 요청 100 이하로 합치기, 약한 기기는 해상도·효과 자동 낮춤.
+- 측정 팁: 자동 브라우저는 bringToFront + Emulation.setFocusEmulationEnabled를 안 하면 백그라운드 탭으로 취급돼 1fps로 나옴.
+
+## 3D 방 무드 레퍼런스 (11/04, 사용자가 고른 것)
+- 오늘의집 취향세대 인터뷰 2건: https://contents.ohou.se/projects/178696 (임태현: LP 디제잉, 귀여운 피규어, 미러볼, 선반 위 턴테이블+액자+볼록거울) / https://contents.ohou.se/projects/177795 (다니엘: 빈티지 오디오 수집가, 스피커 존, 벽에 건 베르베르 러그, 소가죽 러그).
+- 사용자가 고른 사진 2장의 공통점: ①벽 한 면이 무대: 낮은 나무 칸막이 LP 선반 위에 턴테이블/믹서, 양옆에 큰 스피커 한 쌍(받침대 위), 그 위에 액자 2점과 둥근 볼록거울 ②벽을 덮은 큰 무늬 러그(크림+블루 마름모)와 바닥 소가죽 러그 ③따뜻한 전구색 램프(플로어 램프 스포트 헤드, 천 갓 테이블 램프) ④수집품이 빼곡(피규어, 봉제인형, 농구공, 식물, 캐리어, LP 박스) ⑤나무 + 흰 벽 + 따뜻한 조명.
+- 방향: 차가운 어두운 콘크리트 박스 → 따뜻한 "취향 수집가의 거실이 컨테이너 안에 들어온" 느낌. 실제 브랜드 로고(JBL, Technics, Rimowa 등)와 실제 작가 작품(Alec Monopoly)은 쓰지 않고 일반 형태/자체 작품(파티 사진, ROOMi 포스터)으로 대체.
+
+## 3D 방 리뉴얼 (11/07) — Blender 굽기 파이프라인
+- 소스: scratchpad `bw_build.py` (Blender 5 headless: `blender -b -P bw_build.py -- bake`). 결과: `public/models/room-back.glb` + `lm_{base,warm,party,stage}.webp` + `room-back-lm.json`(그룹별 스케일). 라이트맵은 PIL 저장 시 `[::-1]` 상하 뒤집기 필수.
+- `room.ts` `loadBackModule()`: 굽기 재질(MeshBasic + 라이트맵 4장 가중합, 무드별 `LM_MOOD`), 네온/램프 발광, 액자 2개에 파티 사진 랜덤(localStorage 로 직전 조합 회피), 거울 크롬.
+- 옛 컨테이너 벽/천장/바닥/부스/스피커/간판은 `visible=false`. 컨트롤러는 새 선반 위(y 0.78, z -4.0).
+- 남은 일: 무드별 룩 확인·튜닝, 성능 재측정(드로우콜), 옆벽 장식 더, 램프 클릭, 약한 GPU 자동 저화질.
+- 성능 재측정 (11/07, 실서비스 빌드, RTX 4060, 새 방): 정상 ~73fps, CPU x6 ~46fps, x12 ~17fps, 픽셀 4배 해상도 53fps(이전 25fps). 방 모델 1.1MB(Draco) + 라이트맵 4장 ~380KB. 소파·테이블도 Blender 굽기로 교체(테이블 위치 x=-1.2).
+- 속도 작업 (11/07): 컨트롤러 GLB 2.5MB→0.14MB(`dj-controller-lite.glb`, 면 6.9만→2.4만, Draco, 원본은 `dj-controller.glb`로 남김), 네온 튜브 면 3.3만→약 0.8만(`bw_build.py` bevel_resolution 1), `mergeStatic()`(room.ts): 태그 안 된 정적 소품을 재질·구역별로 합침(제품·ball·무드로 바뀌는 재질 제외), ShopScene 자동 해상도(120프레임 후 평균 30ms 넘으면 pixelRatio 0.8→0.65→0.5). 드로우콜 218→약 134(중앙 뷰), 삼각형 12만→약 9만. 실서비스 빌드: 정상 ~78fps, CPU x12 ~33fps, 4배 픽셀 ~35fps(`renderer.info.render.frame`은 프레임당 2씩 올라 반으로 나눈 값).
+- 남은 일: 제품 메시(태그된 것)는 개별 유지 → 더 줄이려면 제품을 한 메시+아틀라스로. 오른쪽 벽 액자 사진.

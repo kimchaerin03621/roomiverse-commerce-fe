@@ -1,0 +1,4 @@
+Textures in this folder come from ambientCG.com (https://ambientcg.com), released under CC0 1.0 (public domain):
+Fabric028 (velvet), Wood051 (walnut_dark), Wood066 (wood_warm), Terrazzo004 (terrazzo_grey), Terrazzo018 (terrazzo_color), Fabric031 (speaker_cloth).
+Plaster001 (plaster), WoodFloor064 (floor_wood).
+Resized to 1K JPG; the velvet colour map was desaturated so a tint can colour it.

@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { PARTIES } from "@/content/parties";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 /*
  * The shop room, kept deliberately small and calm: dark concrete, one pink accent, few objects, few lights.
@@ -44,6 +47,8 @@ type Room = {
   setSpin: (on: boolean) => void;
   /** Pointer is over a control: "stage-light", "disco-ball" or "laptop" brighten softly, null for none. */
   setHover: (id: string | null) => void;
+  /** Turns the room lamps on or off. */
+  toggleLamps: () => void;
   /** An independent copy of one product (materials cloned, cloth laid flat) for the zoom viewer, centred on its own origin. */
   cloneProduct: (id: string) => THREE.Group | null;
   /** Keeps only one product (cloth laid flat) at the world origin and returns its bounds; for product shots. */
@@ -55,6 +60,270 @@ function canvas(w: number, h: number) {
   c.width = w;
   c.height = h;
   return { c, g: c.getContext("2d")! };
+}
+
+
+/** Light weights of the baked groups per mood: sun/sky bounce, warm lamps, neon + LED strip, stage spots. */
+const LM_MOOD: Record<Mood, { base: number; warm: number; party: number; stage: number; lamp: number; neon: number }> = {
+  off: { base: 1.0, warm: 0.15, party: 0.15, stage: 0, lamp: 0.35, neon: 0.55 },
+  soft: { base: 0.38, warm: 1.0, party: 0.6, stage: 0.2, lamp: 1.0, neon: 0.85 },
+  vivid: { base: 0.08, warm: 0.7, party: 1.2, stage: 1.0, lamp: 0.8, neon: 1.0 },
+  rave: { base: 0.03, warm: 0.15, party: 1.4, stage: 0.9, lamp: 0.25, neon: 1.0 },
+};
+const LM_GAIN = 1.0;
+
+/** Picks two party photos for the two frames, never the same pair as the last visit (kept in this browser only). */
+function pickFramePhotos(): [string, string] {
+  const imgs = PARTIES.map((p) => p.hero);
+  let last = "";
+  try {
+    last = localStorage.getItem("roomi-frames") ?? "";
+  } catch {}
+  let a = 0;
+  let b = 1;
+  for (let t = 0; t < 12; t++) {
+    a = Math.floor(Math.random() * imgs.length);
+    b = (a + 1 + Math.floor(Math.random() * (imgs.length - 1))) % imgs.length;
+    if (`${a},${b}` !== last && `${b},${a}` !== last) break;
+  }
+  try {
+    localStorage.setItem("roomi-frames", `${a},${b}`);
+  } catch {}
+  return [imgs[a], imgs[b]];
+}
+
+function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => void }>(o: T) => T, env: () => THREE.Texture | null) {
+  const weights = { ...LM_MOOD.off };
+  const uW = { value: new THREE.Vector4(1, 0, 0, 0) };
+  const emitters: { mat: THREE.MeshBasicMaterial; base: THREE.Color; kind: "lamp" | "neon" }[] = [];
+  const texLoader = new THREE.TextureLoader();
+  const lmTex = (name: string) => {
+    const t = texLoader.load(`/models/lm_${name}.webp`);
+    t.flipY = false;
+    t.colorSpace = THREE.NoColorSpace;
+    t.channel = 1;
+    t.minFilter = THREE.LinearFilter;
+    t.generateMipmaps = false;
+    return t;
+  };
+  const lms = { base: lmTex("base"), warm: lmTex("warm"), party: lmTex("party"), stage: lmTex("stage") };
+  let lampsOn = true;
+  let lampC = 1;
+  let lampHover = 0;
+  let scales = new THREE.Vector4(1, 1, 1, 1);
+  fetch("/models/room-back-lm.json")
+    .then((r) => r.json())
+    .then((j) => scales.set(j.base, j.warm, j.party, j.stage))
+    .catch(() => {});
+  const uScale = { value: scales };
+
+  const bakedMat = (src: THREE.MeshStandardMaterial) => {
+    const m = new THREE.MeshBasicMaterial({ map: src.map, color: src.color, lightMap: lms.base, lightMapIntensity: Math.PI * LM_GAIN });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.lmWarm = { value: lms.warm };
+      sh.uniforms.lmParty = { value: lms.party };
+      sh.uniforms.lmStage = { value: lms.stage };
+      sh.uniforms.lmW = uW;
+      sh.uniforms.lmS = uScale;
+      sh.fragmentShader = sh.fragmentShader
+        .replace("#include <lightmap_pars_fragment>", "#include <lightmap_pars_fragment>\nuniform sampler2D lmWarm;\nuniform sampler2D lmParty;\nuniform sampler2D lmStage;\nuniform vec4 lmW;\nuniform vec4 lmS;")
+        .replace(
+          "vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );",
+          `vec3 lmA = pow(texture2D( lightMap, vLightMapUv ).rgb, vec3(2.2)) * lmS.x * lmW.x;
+          lmA += pow(texture2D( lmWarm, vLightMapUv ).rgb, vec3(2.2)) * lmS.y * lmW.y;
+          lmA += pow(texture2D( lmParty, vLightMapUv ).rgb, vec3(2.2)) * lmS.z * lmW.z;
+          lmA += pow(texture2D( lmStage, vLightMapUv ).rgb, vec3(2.2)) * lmS.w * lmW.w;
+          vec4 lightMapTexel = vec4(lmA, 1.0);`,
+        );
+    };
+    m.customProgramCacheKey = () => "roomi-baked";
+    return m;
+  };
+
+  let neonMesh: THREE.Mesh | null = null;
+  let glow: THREE.Sprite | null = null;
+  const root = new THREE.Group();
+  root.position.y = 0;
+  scene.add(root);
+  const draco = new DRACOLoader().setDecoderPath("/draco/");
+  const loader = new GLTFLoader().setDRACOLoader(draco);
+  loader.load("/models/room-back.glb", (gltf) => {
+    draco.dispose();
+    const photos = pickFramePhotos();
+    gltf.scene.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const src = mesh.material as THREE.MeshStandardMaterial;
+      mesh.castShadow = mesh.receiveShadow = false;
+      const n = mesh.name;
+      if (n.startsWith("E_") || src.name.startsWith("E_")) {
+        const neon = /neon|led/i.test(src.name + n) || n === "Text";
+        const base = new THREE.Color(neon ? (/led/i.test(src.name + n) ? "#ff3d8a" : "#ff2f7e") : "#ffa24d");
+        const m = track(new THREE.MeshBasicMaterial({ color: base }));
+        mesh.material = m;
+        emitters.push({ mat: m, base, kind: neon ? "neon" : "lamp" });
+        if (/neon/i.test(src.name + n) || n === "Text") neonMesh = mesh;
+      } else if (n.startsWith("P_pic")) {
+        const m = track(new THREE.MeshBasicMaterial({ color: "#ffffff" }));
+        mesh.material = m;
+        const url = photos[n.endsWith("a") ? 0 : 1];
+        const geo = mesh.geometry;
+        geo.computeBoundingBox();
+        const bb = geo.boundingBox!;
+        const pw = bb.max.x - bb.min.x;
+        const ph = bb.max.y - bb.min.y;
+        const pos = geo.attributes.position;
+        const uv = geo.attributes.uv;
+        texLoader.load(url, (t) => {
+          t.colorSpace = THREE.SRGBColorSpace;
+          t.flipY = false;
+          t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+          // "cover" crop: planar uv from the picture's own size, centred on the photo
+          const ia = t.image.width / t.image.height;
+          const pa = pw / ph;
+          const su = ia > pa ? pa / ia : 1;
+          const sv = ia > pa ? 1 : ia / pa;
+          for (let i = 0; i < pos.count; i++) {
+            const u = (pos.getX(i) - bb.min.x) / pw;
+            const v = 1 - (pos.getY(i) - bb.min.y) / ph;
+            uv.setXY(i, 0.5 + (u - 0.5) * su, 0.5 + (v - 0.5) * sv);
+          }
+          uv.needsUpdate = true;
+          m.map = t;
+          m.needsUpdate = true;
+        });
+      } else if (n.startsWith("M_")) {
+        // convex mirror: the room's warm light, floor and ceiling are painted into the reflection so it reads as a round bulging mirror
+        const mc = document.createElement("canvas");
+        mc.width = mc.height = 256;
+        const mg = mc.getContext("2d")!;
+        const lin = mg.createLinearGradient(0, 0, 0, 256);
+        lin.addColorStop(0, "#f4efe8");
+        lin.addColorStop(0.5, "#cfc8c4");
+        lin.addColorStop(1, "#8a6040");
+        mg.fillStyle = lin;
+        mg.fillRect(0, 0, 256, 256);
+        const rad = mg.createRadialGradient(90, 80, 4, 128, 128, 140);
+        rad.addColorStop(0, "rgba(255,255,255,0.95)");
+        rad.addColorStop(0.25, "rgba(255,255,255,0.1)");
+        rad.addColorStop(1, "rgba(30,20,20,0.55)");
+        mg.fillStyle = rad;
+        mg.fillRect(0, 0, 256, 256);
+        const mt = track(new THREE.CanvasTexture(mc));
+        mt.colorSpace = THREE.SRGBColorSpace;
+        mesh.material = track(new THREE.MeshStandardMaterial({ color: "#ffffff", map: mt, roughness: 0.08, metalness: 0.9, envMap: env(), envMapIntensity: 1.6 }));
+        const mgeo = mesh.geometry;
+        mgeo.computeBoundingBox();
+        const mb = mgeo.boundingBox!;
+        const mp = mgeo.attributes.position;
+        const muv = mgeo.attributes.uv;
+        for (let i = 0; i < mp.count; i++) muv.setXY(i, (mp.getX(i) - mb.min.x) / (mb.max.x - mb.min.x), 1 - (mp.getY(i) - mb.min.y) / (mb.max.y - mb.min.y));
+        muv.needsUpdate = true;
+      } else {
+        mesh.material = track(bakedMat(src));
+      }
+    });
+    root.add(gltf.scene);
+    if (neonMesh) {
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const g = c.getContext("2d")!;
+      const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+      gr.addColorStop(0, "rgba(255,60,140,0.55)");
+      gr.addColorStop(1, "rgba(255,60,140,0)");
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 128, 128);
+      const gl = new THREE.Sprite(track(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
+      gl.scale.set(3.2, 1.3, 1);
+      gl.position.set(0, 2.4, -4.3);
+      root.add(gl);
+      glow = gl;
+    }
+    apply();
+  });
+
+  const apply = () => {
+    uW.value.set(weights.base, weights.warm * lampC, weights.party, weights.stage);
+    if (glow) (glow.material as THREE.SpriteMaterial).opacity = 0.25 + 0.75 * weights.neon;
+    for (const e of emitters) e.mat.color.copy(e.base).multiplyScalar(e.kind === "lamp" ? (0.4 + 0.9 * weights.lamp) * (0.08 + 0.92 * lampC) * (1 + lampHover * 0.5) : 0.35 + 0.9 * weights.neon);
+  };
+  return {
+    root,
+    setMood(m: Mood) {
+      Object.assign(weights, LM_MOOD[m]);
+      apply();
+    },
+    toggleLamps() {
+      lampsOn = !lampsOn;
+    },
+    /** Eases the lamps toward on/off (about 0.8 s) and lights them a little while the pointer is over one. */
+    tick(dt: number, hovering: boolean) {
+      const target = lampsOn ? 1 : 0;
+      const hv = hovering ? 1 : 0;
+      if (Math.abs(target - lampC) < 0.002 && Math.abs(hv - lampHover) < 0.01) return;
+      lampC += (target - lampC) * Math.min(1, dt * 4);
+      lampHover += (hv - lampHover) * Math.min(1, dt * 10);
+      apply();
+    },
+  };
+}
+
+
+/**
+ * Folds the many small, never-moving props that share a look (same material values, same part of the room) into one mesh each.
+ * Fewer draw calls is what older laptops need most. Products (anything tagged with userData.part), pick targets, glows, moving
+ * or mood-tinted parts are left alone; the originals stay in the scene, only hidden, so cloning for the zoom viewer still works.
+ */
+function mergeStatic(scene: THREE.Scene, skipObjs: THREE.Object3D[], skipMats: Set<THREE.Material>) {
+  scene.updateMatrixWorld(true);
+  const tex = (t: THREE.Texture | null | undefined) => (t ? t.uuid : "-");
+  const buckets = new Map<string, { mat: THREE.Material; items: THREE.Mesh[] }>();
+  const blocked = (o: THREE.Object3D) => {
+    for (let p: THREE.Object3D | null = o; p; p = p.parent) {
+      if (!p.visible || p.userData.part || skipObjs.includes(p)) return true;
+    }
+    return false;
+  };
+  scene.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || (m as unknown as THREE.InstancedMesh).isInstancedMesh || blocked(m)) return;
+    const mat = m.material as THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[];
+    if (Array.isArray(mat) || !(mat as THREE.MeshStandardMaterial).isMeshStandardMaterial || skipMats.has(mat) || mat.transparent || !mat.visible) return;
+    const g = m.geometry;
+    if (!g.attributes.position || !g.attributes.normal || !g.attributes.uv || g.userData.own) return;
+    let top: THREE.Object3D = m;
+    while (top.parent && top.parent !== scene) top = top.parent;
+    const phys = mat as THREE.MeshPhysicalMaterial;
+    const key = [
+      top.uuid, mat.type, mat.color.getHexString(), mat.roughness, mat.metalness, mat.emissive.getHexString(), mat.emissiveIntensity,
+      mat.side, tex(mat.map), tex(mat.normalMap), tex(mat.roughnessMap), tex(mat.envMap), mat.envMapIntensity, mat.normalScale.x,
+      phys.clearcoat ?? 0, phys.sheen ?? 0, m.castShadow, m.receiveShadow,
+    ].join("|");
+    const b = buckets.get(key);
+    if (b) b.items.push(m);
+    else buckets.set(key, { mat, items: [m] });
+  });
+  let merged = 0;
+  for (const { mat, items } of buckets.values()) {
+    if (items.length < 2) continue;
+    const geos = items.map((m) => {
+      const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      g.applyMatrix4(m.matrixWorld);
+      for (const k of Object.keys(g.attributes)) if (k !== "position" && k !== "normal" && k !== "uv") g.deleteAttribute(k);
+      return g;
+    });
+    const big = mergeGeometries(geos, false);
+    geos.forEach((g) => g.dispose());
+    if (!big) continue;
+    const mesh = new THREE.Mesh(big, mat);
+    mesh.castShadow = items[0].castShadow;
+    mesh.receiveShadow = items[0].receiveShadow;
+    mesh.name = "merged";
+    scene.add(mesh);
+    for (const m of items) m.visible = false;
+    merged += items.length;
+  }
+  return merged;
 }
 
 export function buildRoom(scene: THREE.Scene): Room {
@@ -207,6 +476,53 @@ export function buildRoom(scene: THREE.Scene): Room {
     t.repeat.set(1.6, 1.6);
     return track(new THREE.MeshPhysicalMaterial({ map: t, roughness: rough, clearcoat: 0.85, clearcoatRoughness: 0.12 }));
   };
+  /** Photographic PBR material from /shop3d/mat/{base}_color|normal|rough.jpg (ambientCG, CC0). `rot` turns the grain. */
+  const photoMat = (
+    base: string,
+    o: { repeat?: [number, number]; rot?: number; tint?: THREE.ColorRepresentation; normal?: number; rough?: number; sheen?: string; clearcoat?: number } = {},
+  ) => {
+    const mk = (suffix: string, srgb: boolean) => {
+      const t = track(loader.load(`/shop3d/mat/${base}_${suffix}.jpg`));
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = 8;
+      t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      if (o.rot) {
+        t.center.set(0.5, 0.5);
+        t.rotation = o.rot;
+      }
+      t.repeat.set(o.repeat?.[0] ?? 1, o.repeat?.[1] ?? 1);
+      return t;
+    };
+    const m = new THREE.MeshPhysicalMaterial({
+      map: mk("color", true),
+      normalMap: mk("normal", false),
+      roughnessMap: mk("rough", false),
+      color: o.tint ?? 0xffffff,
+      roughness: o.rough ?? 1,
+      normalScale: new THREE.Vector2(o.normal ?? 1, o.normal ?? 1),
+      clearcoat: o.clearcoat ?? 0,
+      clearcoatRoughness: 0.4,
+    });
+    if (o.sheen) {
+      m.sheen = 1;
+      m.sheenColor = new THREE.Color(o.sheen);
+      m.sheenRoughness = 0.45;
+    }
+    return track(m);
+  };
+  /** Rescales a box's UVs to its real size, so a photo keeps the same scale on big and small faces (`tile` = metres per picture). */
+  const tileBox = (m: THREE.Mesh, w: number, h: number, d: number, tile: number) => {
+    const uv = m.geometry.attributes.uv;
+    const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+    for (let f = 0; f < 6; f++) {
+      for (let v = 0; v < 4; v++) {
+        const i = f * 4 + v;
+        uv.setXY(i, (uv.getX(i) * dims[f][0]) / tile, (uv.getY(i) * dims[f][1]) / tile);
+      }
+    }
+    uv.needsUpdate = true;
+    return m;
+  };
   const brass = () => track(new THREE.MeshStandardMaterial({ color: "#c9a45c", roughness: 0.28, metalness: 1, envMap: scene.environment, envMapIntensity: 1.6 }));
 
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x = 0, y = 0, z = 0, parent: THREE.Object3D = scene, shadow = true) => {
@@ -290,7 +606,8 @@ export function buildRoom(scene: THREE.Scene): Room {
   const floor = add(new THREE.PlaneGeometry(W * 2 + 0.4, L), floorMat, 0, 0, cz);
   floor.rotation.x = -Math.PI / 2;
   floor.castShadow = false;
-  box(W * 2 + 0.8, H, 0.2, concrete([2, 1]), 0, H / 2, Z0 - 0.1);
+  floor.visible = false; // replaced by the baked wood floor
+  box(W * 2 + 0.8, H, 0.2, concrete([2, 1]), 0, H / 2, Z0 - 0.1).visible = false;
   // Side walls: corrugated container steel (ribs drawn into a tiny tiling color + normal texture).
   const corr = (() => {
     const N = 128;
@@ -320,13 +637,17 @@ export function buildRoom(scene: THREE.Scene): Room {
   })();
   const steel = std("#2b2c32", 0.5, 0.5);
   for (const sx of [-1, 1]) {
-    box(0.2, H, L + 0.4, corr, sx * (W + 0.1), H / 2, cz);
-    box(0.1, 0.16, L, steel, sx * (W - 0.05), H - 0.08, cz); // top rail
-    box(0.08, 0.14, L, steel, sx * (W - 0.04), 0.07, cz); // bottom rail
-    box(0.14, H, 0.14, steel, sx * (W - 0.07), H / 2, Z0 + 0.07); // corner post
-    box(0.14, H, 0.14, steel, sx * (W - 0.07), H / 2, Z1 - 0.07);
+    // old container wall, rails and posts: hidden, the baked cream walls replace them
+    for (const m of [
+      box(0.2, H, L + 0.4, corr, sx * (W + 0.1), H / 2, cz),
+      box(0.1, 0.16, L, steel, sx * (W - 0.05), H - 0.08, cz),
+      box(0.08, 0.14, L, steel, sx * (W - 0.04), 0.07, cz),
+      box(0.14, H, 0.14, steel, sx * (W - 0.07), H / 2, Z0 + 0.07),
+      box(0.14, H, 0.14, steel, sx * (W - 0.07), H / 2, Z1 - 0.07),
+    ])
+      m.visible = false;
   }
-  box(W * 2 + 0.8, 0.2, L + 0.4, std("#0f0d12", 0.9), 0, H + 0.1, cz);
+  box(W * 2 + 0.8, 0.2, L + 0.4, std("#0f0d12", 0.9), 0, H + 0.1, cz).visible = false;
   // one track rail over the booth, nothing else up there
   const rail = std("#1a171d", 0.5, 0.6);
   box(W * 2 - 1.2, 0.04, 0.06, rail, 0, H - 0.1, -2.2);
@@ -369,6 +690,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     const W_SIGN = 4.1 * 0.7;
     const sign = add(new THREE.PlaneGeometry(W_SIGN, W_SIGN * (424 / 812)), track(new THREE.MeshBasicMaterial({ map: signTex, transparent: true, opacity: 0.95 })), 0, 2.0, Z0 + 0.03, scene, false);
     sign.receiveShadow = false;
+    sign.visible = false; // the new back-wall module carries its own neon sign
   }
 
   const fixtures: THREE.SpotLight[] = [];
@@ -419,13 +741,15 @@ export function buildRoom(scene: THREE.Scene): Room {
   {
     const g = new THREE.Group();
     g.position.set(0, 0, -3.0);
-    box(3.2, 0.92, 0.8, woodMat("#2a2227", "#0f0b0d", [1, 1], "v", 0.6), 0, 0.46, 0, g);
+    const walnut = photoMat("walnut_dark", { rot: Math.PI / 2, rough: 0.95, normal: 1.2 });
+    tileBox(box(3.2, 0.92, 0.8, walnut, 0, 0.46, 0, g), 3.2, 0.92, 0.8, 1.7);
     // fluted front: slim vertical slats above the neon strip
-    const flute = woodMat("#34292d", "#120d0f", [0.12, 1], "v", 0.5);
-    for (let i = 0; i < 31; i++) box(0.062, 0.66, 0.026, flute, -1.5 + i * 0.1, 0.55, 0.409, g);
-    box(3.28, 0.05, 0.88, stoneMat("#e6e3ea", ["#9a96a2", "#c9c4cc"], 1800, 1.6, [], 0.3), 0, 0.945, 0, g);
+    const flute = photoMat("walnut_dark", { rot: Math.PI / 2, tint: "#e8d2c2", rough: 0.85, normal: 1.4, clearcoat: 0.15 });
+    for (let i = 0; i < 31; i++) tileBox(box(0.062, 0.66, 0.026, flute, -1.5 + i * 0.1, 0.55, 0.409, g), 0.062, 0.66, 0.026, 1.6);
+    tileBox(box(3.28, 0.05, 0.88, photoMat("terrazzo_grey", { rough: 0.7, normal: 0.6, clearcoat: 0.6 }), 0, 0.945, 0, g), 3.28, 0.05, 0.88, 0.45);
     box(3.24, 0.014, 0.84, brass(), 0, 0.915, 0, g);
     box(3.0, 0.016, 0.016, neonMat("#ff3d8a", 1.2), 0, 0.12, 0.405, g).castShadow = false;
+    for (const c of g.children) c.visible = false; // old booth: the baked shelf module replaces it, only the controller stays
     const dark = std("#1a1618", 0.4, 0.3);
     // Stand-in controller, replaced by the real model (public/models/dj-controller.glb) as soon as it has loaded.
     const standIn = new THREE.Group();
@@ -436,12 +760,14 @@ export function buildRoom(scene: THREE.Scene): Room {
       cyl(0.032, 0.032, 0.02, neonMat("#f71d64", 1), x, 1.04, 0.03, standIn, 20);
     }
     // click target sized to the real model (opened case, scaled up so it reads from across the room)
-    const DJ_SCALE = 1.8;
-    hitBox(1.1, 0.48, 0.88, 0, 0.97 + 0.24, 0.0, g, "dj-controller");
-    new GLTFLoader().load("/models/dj-controller.glb", (gltf) => {
+    const DJ_SCALE = 1.5;
+    const SHELF_TOP = 0.78; // top of the baked LP shelf
+    const SHELF_Z = -4.0 - g.position.z;
+    hitBox(0.95, 0.4, 0.74, 0, SHELF_TOP + 0.2, SHELF_Z, g, "dj-controller");
+    new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath("/draco/")).load("/models/dj-controller-lite.glb", (gltf) => {
       const model = gltf.scene;
       model.scale.setScalar(DJ_SCALE);
-      model.position.set(0, 0.97, 0.01);
+      model.position.set(0, SHELF_TOP, SHELF_Z);
       model.userData.part = "dj-controller";
       model.traverse((o) => {
         const m = o as THREE.Mesh;
@@ -514,19 +840,24 @@ export function buildRoom(scene: THREE.Scene): Room {
       const sp = new THREE.Group();
       sp.position.set(sx * 2.25, 0, -3.05);
       sp.rotation.y = -sx * 0.22;
-      rbox(0.55, 1.2, 0.46, 0.025, fabric("#16131a", [3, 6], 0.7), 0, 0.6, 0, sp);
+      rbox(0.55, 1.2, 0.46, 0.025, photoMat("speaker_cloth", { repeat: [1.6, 3.2], tint: "#3a343f", normal: 1.2 }), 0, 0.6, 0, sp);
       for (const [y, r] of [[0.42, 0.17], [0.9, 0.075]] as const) {
         cyl(r + 0.03, r + 0.03, 0.03, std("#0b090c", 0.7), 0, y, 0.235, sp, 36).rotation.x = Math.PI / 2;
         cyl(r, r * 0.8, 0.03, std("#2a252c", 0.4, 0.3), 0, y, 0.245, sp, 36).rotation.x = Math.PI / 2;
         add(new THREE.TorusGeometry(r * 0.8, r * 0.1, 8, 36), std("#0b090c", 0.9), 0, y, 0.262, sp);
         add(new THREE.SphereGeometry(r * 0.34, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), std("#34303a", 0.35, 0.4), 0, y, 0.256, sp).rotation.x = Math.PI / 2;
       }
+      sp.visible = false;
       scene.add(sp);
     }
-    blob(0, -3.0, 3.8, 1.5, 0, 0.9);
-    blob(-2.25, -3.05, 1.1, 1.0, 0, 0.8);
-    blob(2.25, -3.05, 1.1, 1.0, 0, 0.8);
   }
+
+  // ---------- Baked back-wall module (Blender): shelf, speakers, lamps, neon, frames ----------
+  const moduleHooks = loadBackModule(scene, track, () => scene.environment);
+  // the lamps are switches: a click turns them on or off
+  hitBox(0.42, 0.34, 0.42, -1.2, 0.93, -4.0, scene, "lamp"); // dome lamp on the shelf
+  hitBox(0.55, 0.5, 0.5, -2.7, 1.62, -3.85, scene, "lamp"); // floor lamp heads
+  hitBox(0.4, 0.5, 0.4, 3.5, 1.82, -2.5, scene, "lamp"); // lamp on the right-wall ledge
 
   // ---------- Star-edged rug in front of the booth ----------
   {
@@ -569,13 +900,13 @@ export function buildRoom(scene: THREE.Scene): Room {
     const g = new THREE.Group();
     g.position.set(-W + 0.7, 0, -1.3);
     g.rotation.y = Math.PI / 2;
-    const velvet = velvetMat("#3b2c46", "#b58ad0", [5, 3]);
-    const velvetL = velvetMat("#46345a", "#c79ae0", [4, 3]);
+    const velvet = photoMat("velvet", { repeat: [3.2, 2], tint: "#6a3fa3", sheen: "#c9a2ee", normal: 1.1 });
+    const velvetL = photoMat("velvet", { repeat: [2.6, 2], tint: "#7646b3", sheen: "#d4aef2", normal: 1.1 });
     rbox(2.5, 0.36, 1.0, 0.09, velvet, 0, 0.25, 0, g);
     for (const x of [-0.6, 0.6]) rbox(1.15, 0.22, 0.84, 0.1, velvetL, x, 0.52, 0.06, g);
     for (const x of [-0.6, 0.6]) rbox(1.15, 0.52, 0.28, 0.11, velvetL, x, 0.84, -0.34, g).rotation.x = -0.14;
     for (const x of [-1.24, 1.24]) rbox(0.24, 0.64, 1.0, 0.09, velvet, x, 0.5, 0, g);
-    const legWood = woodMat("#4a3426", "#21140d", [1, 1], "v", 0.45);
+    const legWood = photoMat("wood_warm", { rot: Math.PI / 2, rough: 0.8, clearcoat: 0.2 });
     for (const x of [-1.1, 1.1]) {
       for (const z of [-0.4, 0.4]) {
         cyl(0.036, 0.022, 0.14, legWood, x, 0.07, z, g, 14);
@@ -595,9 +926,10 @@ export function buildRoom(scene: THREE.Scene): Room {
     }
     for (const x of [-1.24, 1.24]) cyl(0.0085, 0.0085, 0.9, pipe, x, 0.835, 0, g, 8).rotation.x = Math.PI / 2;
     box(2.46, 0.03, 0.96, std("#1b1422", 0.9), 0, 0.085, 0, g);
+    for (const c of g.children) c.visible = false; // the baked sofa from the Blender module replaces the body
     // throw pillow against the left arm
     {
-      const pil = rbox(0.34, 0.34, 0.12, 0.05, velvetMat("#c6806c", "#ffb792", [2, 2]), -0.98, 0.84, -0.1, g);
+      const pil = rbox(0.34, 0.34, 0.12, 0.05, photoMat("velvet", { repeat: [1.4, 1.4], tint: "#ffc9ae", sheen: "#fff0e6", normal: 1.1 }), -0.98, 0.84, -0.1, g);
       pil.rotation.set(-0.16, 0.38, 0.16);
       cyl(0.006, 0.006, 0.01, brass(), -0.98, 0.84, -0.04, g, 8).rotation.x = Math.PI / 2;
     }
@@ -913,12 +1245,11 @@ export function buildRoom(scene: THREE.Scene): Room {
   // ---------- Left wall: oval table, party food and drinks, keyrings, patches ----------
   {
     const g = new THREE.Group();
-    g.position.set(-W + 2.0, 0, -1.3);
+    g.position.set(-W + 2.4, 0, -1.3);
     g.rotation.y = 0.12;
     // terrazzo top; the side is plain lacquer so the texture does not smear into streaks
     const tableSide = track(new THREE.MeshPhysicalMaterial({ color: "#ece7e2", roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.15 }));
-    const tableTop = stoneMat("#e9e4df", ["#a39a94", "#cfc6bf"], 1400, 1.2, ["#f71d64", "#c14ed4", "#ffb792", "#6b6470"], 0.26);
-    tableTop.map!.repeat.set(2.4, 2.4);
+    const tableTop = photoMat("terrazzo_color", { repeat: [2.6, 1.8], rough: 0.8, normal: 0.6, clearcoat: 0.9 });
     cyl(1, 1, 0.07, tableSide, 0, 0.46, 0, g, 64).scale.set(0.9, 1, 0.58);
     {
       const topDisc = add(new THREE.CircleGeometry(1, 64), tableTop, 0, 0.4955, 0, g, false);
@@ -937,6 +1268,7 @@ export function buildRoom(scene: THREE.Scene): Room {
       cyl(0.1, 0.1, 0.012, brass(), x, 0.428, 0, g, 28);
       cyl(0.13, 0.13, 0.012, brass(), x, 0.008, 0, g, 28);
     }
+    for (const c of g.children) c.visible = false; // baked table body replaces these
     box(0.42, 0.045, 0.42, std("#c9a26a", 0.9), -0.45, 0.52, -0.08, g).rotation.y = 0.35;
     cyl(0.17, 0.17, 0.02, std("#e7b04a", 0.8), -0.45, 0.555, -0.08, g, 24);
     const glassM = track(new THREE.MeshPhysicalMaterial({ color: "#ffffff", roughness: 0.05, transparent: true, opacity: 0.26, clearcoat: 1 }));
@@ -979,7 +1311,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     const g = new THREE.Group();
     g.position.set(W - 0.32, 0, -1.6);
     g.rotation.y = -Math.PI / 2;
-    const frame = woodMat("#3a2a24", "#1b100c", [1, 1], "v", 0.42);
+    const frame = photoMat("wood_warm", { rot: Math.PI / 2, tint: "#a98a78", rough: 0.85, clearcoat: 0.2 });
     const cw = 0.54;
     const cols = 3;
     const rows = 2;
@@ -989,6 +1321,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     for (let i = 0; i <= cols; i++) rbox(0.035, shelfH, 0.38, 0.006, frame, -(cols * cw) / 2 + i * cw, y0 + shelfH / 2, 0, g);
     for (let j = 0; j <= rows; j++) rbox(cols * cw + 0.035, 0.035, 0.38, 0.006, frame, 0, y0 + j * cw + 0.017, 0, g);
     box(cols * cw + 0.03, shelfH, 0.01, std("#0e0a10", 0.8), 0, y0 + shelfH / 2, -0.19, g);
+    for (const c of g.children) c.visible = false; // the baked shelf frame from the Blender module replaces these
 
     const mats = ["#f71d64", "#c14ed4", "#ffb792", "#f0f0f0"].map((c) => std(c, 0.55));
     // Each cell holds one calm group: balloons, hats, rolls, gifts, cups, poppers.
@@ -1208,17 +1541,28 @@ export function buildRoom(scene: THREE.Scene): Room {
     for (const f of fixtures) f.intensity = v.stage;
     for (const n of neons) n.mat.color.copy(n.base).multiplyScalar(n.gain * v.neon);
     spotStrength = v.spots;
+    moduleHooks.setMood(m);
     lasers = m === "rave";
     for (const b of beams) b.visible = lasers;
     if (lasers) sweep(lastT);
     return v.ex;
   };
 
+  // Fold the static props together (must stay after everything is built, and skip whatever moves or is tinted by mood).
+  mergeStatic(
+    scene,
+    [ball],
+    new Set<THREE.Material>([...neons.map((n) => n.mat), ...lensMats, ...djMats, ballMat, lapMat as unknown as THREE.Material]),
+  );
+
   return {
     picks,
     setMood,
     setSpin(on: boolean) {
       spin = on;
+    },
+    toggleLamps() {
+      moduleHooks.toggleLamps();
     },
     setHover(id: string | null) {
       hoverId = id;
@@ -1304,6 +1648,7 @@ export function buildRoom(scene: THREE.Scene): Room {
       hLap += ((hoverId === "laptop" ? 1 : 0) - hLap) * Math.min(1, dt * 10);
       lapMat.color.setScalar(0.85 + hLap * 0.45);
       (lapGlow.material as THREE.SpriteMaterial).opacity = hLap * 0.5;
+      moduleHooks.tick(dt, hoverId === "lamp");
       lensMats.forEach((m, i) => m.color.copy(lensBase[i]).multiplyScalar(1 + hLight * 1.4));
       ballMat.emissiveIntensity = hBall * 0.12;
       for (const f of fixtureGlow) (f.material as THREE.SpriteMaterial).opacity = hLight * 0.75;

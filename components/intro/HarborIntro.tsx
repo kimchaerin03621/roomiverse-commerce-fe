@@ -13,7 +13,7 @@ import styles from "./HarborIntro.module.css";
 const MAX_X = 2.2; // % of stage width at depth 1
 const MAX_Y = 1.3; // % of stage height at depth 1
 const ENTER_MS = 700; // the doors cover the zoom well before the page changes
-const GATE_MS = 2600; // keep in step with ShopScene
+const GATE_MS = 1000; // keep in step with ShopScene
 
 /*
  * Light shafts from a source deep inside the container, aimed out through the
@@ -91,6 +91,22 @@ export default function HarborIntro() {
       document.documentElement.removeEventListener("pointerleave", onLeave);
     };
   }, []);
+
+  // While the visitor is still looking at the harbor, quietly fetch what the 3D shop needs (its page code and the
+  // room's picture textures), so the doors open sooner after the click.
+  useEffect(() => {
+    const warm = () => {
+      router.prefetch("/shop/3d");
+      for (const f of ["carpet_color.jpg", "carpet_normal.jpg", "concrete_color.jpg", "concrete_wall_normal.jpg", "wall_color.jpg", "wall_normal.jpg", "fabric_normal.jpg", "sign.png", "mat/velvet_color.jpg", "mat/velvet_normal.jpg", "mat/walnut_dark_color.jpg", "mat/walnut_dark_normal.jpg", "mat/terrazzo_grey_color.jpg", "mat/terrazzo_color_color.jpg", "mat/wood_warm_color.jpg"]) {
+        const img = new Image();
+        img.src = `/shop3d/${f}`;
+      }
+      void fetch("/models/dj-controller.glb");
+    };
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(warm);
+    else window.setTimeout(warm, 800);
+  }, [router]);
 
   const enter = () => {
     if (entering) return;
