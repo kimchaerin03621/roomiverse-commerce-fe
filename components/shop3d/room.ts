@@ -73,7 +73,7 @@ const LM_MOOD: Record<Mood, { base: number; warm: number; party: number; stage: 
 const LM_GAIN = 1.0;
 
 /** Picks two party photos for the two frames, never the same pair as the last visit (kept in this browser only). */
-function pickFramePhotos(): [string, string] {
+function pickFramePhotos(): [string, string, string, string] {
   const imgs = PARTIES.map((p) => p.hero);
   let last = "";
   try {
@@ -89,7 +89,9 @@ function pickFramePhotos(): [string, string] {
   try {
     localStorage.setItem("roomi-frames", `${a},${b}`);
   } catch {}
-  return [imgs[a], imgs[b]];
+  // the two portrait frames on the right wall: detail shots from two other scenes
+  const rest = PARTIES.map((_, i) => i).filter((i) => i !== a && i !== b).sort(() => Math.random() - 0.5);
+  return [imgs[a], imgs[b], PARTIES[rest[0]].side, PARTIES[rest[1]].side];
 }
 
 function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => void }>(o: T) => T, env: () => THREE.Texture | null) {
@@ -166,11 +168,14 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
       } else if (n.startsWith("P_pic")) {
         const m = track(new THREE.MeshBasicMaterial({ color: "#ffffff" }));
         mesh.material = m;
-        const url = photos[n.endsWith("a") ? 0 : 1];
+        const url = photos["abcd".indexOf(n.slice(-1))];
         const geo = mesh.geometry;
         geo.computeBoundingBox();
         const bb = geo.boundingBox!;
-        const pw = bb.max.x - bb.min.x;
+        // wall frames lie in the x/y plane, the right-wall ones in the z/y plane (viewed from inside the room, u grows with +z)
+        const sideWall = bb.max.x - bb.min.x < bb.max.z - bb.min.z;
+        const ax: "x" | "z" = sideWall ? "z" : "x";
+        const pw = bb.max[ax] - bb.min[ax];
         const ph = bb.max.y - bb.min.y;
         const pos = geo.attributes.position;
         const uv = geo.attributes.uv;
@@ -184,7 +189,7 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
           const su = ia > pa ? pa / ia : 1;
           const sv = ia > pa ? 1 : ia / pa;
           for (let i = 0; i < pos.count; i++) {
-            const u = (pos.getX(i) - bb.min.x) / pw;
+            const u = ((sideWall ? pos.getZ(i) : pos.getX(i)) - bb.min[ax]) / pw;
             const v = 1 - (pos.getY(i) - bb.min.y) / ph;
             uv.setXY(i, 0.5 + (u - 0.5) * su, 0.5 + (v - 0.5) * sv);
           }

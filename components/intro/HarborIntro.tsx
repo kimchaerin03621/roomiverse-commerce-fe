@@ -188,6 +188,13 @@ export default function HarborIntro() {
         </picture>
       </div>
 
+      <div className={styles.welcome} data-hidden={entering || undefined}>
+        <button type="button" className={styles.enterBtn} onClick={enter} tabIndex={-1}>
+          Click to enter
+        </button>
+        <p className={styles.welcomeHint}>빛나는 컨테이너를 눌러도 들어갈 수 있어요</p>
+      </div>
+
       <div className={styles.flash} aria-hidden="true" />
       {entering && <ContainerGate pct={pct} fade />}
     </main>
