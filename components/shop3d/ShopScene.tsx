@@ -32,10 +32,10 @@ export default function ShopScene() {
   const makeModel = useCallback((id: string) => api.current?.cloneProduct(id) ?? null, []);
   const { add } = useCart();
   const router = useRouter();
-  const [mood, setMood] = useState<Mood>("off");
-  const [spin, setSpin] = useState(false);
-  const moodRef = useRef<Mood>("off");
-  const spinRef = useRef(false);
+  const [mood, setMood] = useState<Mood>("soft");
+  const [spin, setSpin] = useState(true);
+  const moodRef = useRef<Mood>("soft");
+  const spinRef = useRef(true);
   const [product, setProduct] = useState<Product | null>(null);
   const [option, setOption] = useState("");
   const [added, setAdded] = useState(false);
@@ -156,7 +156,7 @@ export default function ShopScene() {
     const pickMeshes = room.picks.map((p) => p.object);
     const idOf = (o: THREE.Object3D) => room.picks.find((p) => p.object === o)?.id ?? null;
 
-    let exposure = room.setMood("off");
+    let exposure = room.setMood("soft");
     renderer.toneMappingExposure = exposure;
 
     const size = () => {

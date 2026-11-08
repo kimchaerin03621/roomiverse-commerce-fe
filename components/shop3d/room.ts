@@ -234,23 +234,28 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
       c.width = c.height = 128;
       const g = c.getContext("2d")!;
       const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64);
-      gr.addColorStop(0, "rgba(255,60,140,0.55)");
-      gr.addColorStop(1, "rgba(255,60,140,0)");
+      gr.addColorStop(0, "rgba(255,24,110,0.5)");
+      gr.addColorStop(0.55, "rgba(255,24,110,0.22)");
+      gr.addColorStop(1, "rgba(255,24,110,0)");
       g.fillStyle = gr;
       g.fillRect(0, 0, 128, 128);
-      const gl = new THREE.Sprite(track(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })));
-      gl.scale.set(3.2, 1.3, 1);
-      gl.position.set(0, 2.4, -4.3);
+      const gl = new THREE.Sprite(track(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true })));
+      gl.scale.set(3.0, 1.2, 1); // normal blending: an additive pink over the green wall turns grey
+      gl.position.set(0, 2.2, -4.3);
       root.add(gl);
       glow = gl;
     }
     apply();
   });
 
+  // the neon stutters for a moment every ten seconds or so, like a tube that is not quite settled
+  let flick = 1;
+  let clock = 0;
+  let nextFlick = 4;
   const apply = () => {
     uW.value.set(weights.base, weights.warm * lampC, weights.party, weights.stage);
-    if (glow) (glow.material as THREE.SpriteMaterial).opacity = 0.25 + 0.75 * weights.neon;
-    for (const e of emitters) e.mat.color.copy(e.base).multiplyScalar(e.kind === "lamp" ? (0.4 + 0.9 * weights.lamp) * (0.08 + 0.92 * lampC) * (1 + lampHover * 0.5) : 0.35 + 0.9 * weights.neon);
+    if (glow) (glow.material as THREE.SpriteMaterial).opacity = (0.25 + 0.75 * weights.neon) * flick;
+    for (const e of emitters) e.mat.color.copy(e.base).multiplyScalar(e.kind === "lamp" ? (0.4 + 0.9 * weights.lamp) * (0.08 + 0.92 * lampC) * (1 + lampHover * 0.5) : (0.35 + 0.9 * weights.neon) * flick);
   };
   return {
     root,
@@ -263,9 +268,21 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
     },
     /** Eases the lamps toward on/off (about 0.8 s) and lights them a little while the pointer is over one. */
     tick(dt: number, hovering: boolean) {
+      clock += dt;
+      let f = 1;
+      if (clock >= nextFlick) {
+        const k = clock - nextFlick;
+        if (k < 0.5) f = Math.sin(k * 40) > 0.15 ? 1 : 0.18;
+        else nextFlick = clock + 7 + Math.random() * 7;
+      }
+      const flickChanged = f !== flick;
+      flick = f;
       const target = lampsOn ? 1 : 0;
       const hv = hovering ? 1 : 0;
-      if (Math.abs(target - lampC) < 0.002 && Math.abs(hv - lampHover) < 0.01) return;
+      if (Math.abs(target - lampC) < 0.002 && Math.abs(hv - lampHover) < 0.01) {
+        if (flickChanged) apply();
+        return;
+      }
       lampC += (target - lampC) * Math.min(1, dt * 4);
       lampHover += (hv - lampHover) * Math.min(1, dt * 10);
       apply();
@@ -339,6 +356,7 @@ export function buildRoom(scene: THREE.Scene): Room {
   };
 
   const picks: Pick[] = [];
+  const balloonPivots: THREE.Group[] = [];
   /** Marks a mesh as a product. It gets its own material so hovering lights only this object. */
   const tag = <T extends THREE.Object3D>(o: T, id: string): T => {
     const m = o as unknown as THREE.Mesh;
@@ -725,7 +743,8 @@ export function buildRoom(scene: THREE.Scene): Room {
   }
 
   const ball = new THREE.Group();
-  ball.position.set(0, 2.82, -3.2);
+  ball.position.set(0, 2.9, -3.2);
+  ball.scale.setScalar(1.15);
   cyl(0.004, 0.004, 0.6, std("#555", 0.5, 0.8), 0, 0.5, 0, ball, 6).castShadow = false;
   const ballMat = track(new THREE.MeshStandardMaterial({ color: "#dcdcff", roughness: 0.1, metalness: 1, flatShading: true, envMap: scene.environment, envMapIntensity: 3.2, emissive: "#ffffff", emissiveIntensity: 0 }));
   const ballMesh = add(
@@ -766,14 +785,16 @@ export function buildRoom(scene: THREE.Scene): Room {
       cyl(0.032, 0.032, 0.02, neonMat("#f71d64", 1), x, 1.04, 0.03, standIn, 20);
     }
     // click target sized to the real model (opened case, scaled up so it reads from across the room)
-    const DJ_SCALE = 1.5;
+    const DJ_SCALE = 1.85;
     const SHELF_TOP = 0.78; // top of the baked LP shelf
     const SHELF_Z = -4.0 - g.position.z;
-    hitBox(0.95, 0.4, 0.74, 0, SHELF_TOP + 0.2, SHELF_Z, g, "dj-controller");
+    hitBox(1.17, 0.5, 0.92, 0, SHELF_TOP + 0.25, SHELF_Z, g, "dj-controller");
     new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath("/draco/")).load("/models/dj-controller-lite.glb", (gltf) => {
       const model = gltf.scene;
       model.scale.setScalar(DJ_SCALE);
-      model.position.set(0, SHELF_TOP, SHELF_Z);
+      // sits on a baked wooden riser (from the Blender module) that tilts it toward the room, so the decks are not hidden by the case rim
+      model.rotation.x = 0.3;
+      model.position.set(0, SHELF_TOP + 0.14, SHELF_Z);
       model.userData.part = "dj-controller";
       model.traverse((o) => {
         const m = o as THREE.Mesh;
@@ -782,7 +803,7 @@ export function buildRoom(scene: THREE.Scene): Room {
         m.receiveShadow = true;
         const mat = m.material as THREE.MeshStandardMaterial;
         mat.envMap = scene.environment;
-        mat.side = THREE.FrontSide;
+        mat.side = THREE.DoubleSide;
         // ROOMi "Black" edition: ink-black lacquer body, brushed silver, pink / purple / peach accents
         const paint = (hex: string, rough: number, metal = 0, env = 1) => {
           mat.map = null;
@@ -1336,9 +1357,15 @@ export function buildRoom(scene: THREE.Scene): Room {
       if (kind === 0) {
         for (let i = 0; i < 3; i++) {
           const col = ["#f71d64", "#c14ed4", "#f0f0f0"][i];
-          const b = add(new THREE.SphereGeometry(0.085, 20, 16), track(new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.22, clearcoat: 0.6 })), cx - 0.12 + i * 0.12, by + 0.3 + (i % 2) * 0.06, 0, g);
+          // each balloon hangs from its own pivot at the knot, so it can sway (not merged into the static props)
+          const pv = new THREE.Group();
+          pv.position.set(cx - 0.12 + i * 0.12, by + 0.09, 0);
+          pv.userData.noMerge = true;
+          const b = add(new THREE.SphereGeometry(0.085, 20, 16), track(new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.22, clearcoat: 0.6 })), 0, 0.21 + (i % 2) * 0.06, 0, pv);
           b.scale.y = 1.2;
-          cyl(0.002, 0.002, 0.2, std("#ddd", 0.9), b.position.x, by + 0.19, 0, g, 4);
+          cyl(0.002, 0.002, 0.2, std("#ddd", 0.9), 0, 0.1, 0, pv, 4);
+          g.add(pv);
+          balloonPivots.push(pv);
         }
       } else if (kind === 1) {
         for (let i = 0; i < 3; i++) add(new THREE.ConeGeometry(0.06, 0.2, 18), mats[i], cx - 0.13 + i * 0.13, by + 0.1, 0, g);
@@ -1517,6 +1544,7 @@ export function buildRoom(scene: THREE.Scene): Room {
   let spotStrength = 0;
   let lasers = false;
   let spin = false;
+  let dustTarget = 0.45;
   let angle = 0;
   let lastT = 0;
   const lensBase = [new THREE.Color(), new THREE.Color()];
@@ -1548,11 +1576,79 @@ export function buildRoom(scene: THREE.Scene): Room {
     for (const n of neons) n.mat.color.copy(n.base).multiplyScalar(n.gain * v.neon);
     spotStrength = v.spots;
     moduleHooks.setMood(m);
+    dustTarget = { off: 0.15, soft: 0.45, vivid: 0.65, rave: 0.75 }[m];
     lasers = m === "rave";
     for (const b of beams) b.visible = lasers;
     if (lasers) sweep(lastT);
     return v.ex;
   };
+
+  // ---------- Floating dust motes (they catch the light) and a twinkle over every product ----------
+  const dustN = 70;
+  const dustSeed = Array.from({ length: dustN }, () => ({
+    x: (Math.random() - 0.5) * 6.2,
+    z: -4 + Math.random() * 4.4,
+    y0: 0.2 + Math.random() * 2.8,
+    sp: 0.018 + Math.random() * 0.03,
+    ph: Math.random() * 6.28,
+  }));
+  const dustPos = new Float32Array(dustN * 3);
+  const dustGeo = track(new THREE.BufferGeometry());
+  dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+  const dotC = canvas(32, 32);
+  {
+    const gr = dotC.g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.4, "rgba(255,255,255,0.45)");
+    gr.addColorStop(1, "rgba(255,255,255,0)");
+    dotC.g.fillStyle = gr;
+    dotC.g.fillRect(0, 0, 32, 32);
+  }
+  const dustMat = track(
+    new THREE.PointsMaterial({ map: tex(dotC.c), size: 0.05, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: "#ffe2c6", opacity: 0 }),
+  );
+  const dust = new THREE.Points(dustGeo, dustMat);
+  dust.frustumCulled = false;
+  scene.add(dust);
+
+  const starC = canvas(64, 64);
+  {
+    const sg = starC.g;
+    const gr = sg.createRadialGradient(32, 32, 0, 32, 32, 14);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(1, "rgba(255,255,255,0)");
+    sg.fillStyle = gr;
+    sg.fillRect(0, 0, 64, 64);
+    for (const [w, h] of [[62, 3], [3, 62]]) {
+      const lg = sg.createLinearGradient(32 - w / 2, 32 - h / 2, 32 + w / 2, 32 + h / 2);
+      lg.addColorStop(0, "rgba(255,255,255,0)");
+      lg.addColorStop(0.5, "rgba(255,255,255,0.95)");
+      lg.addColorStop(1, "rgba(255,255,255,0)");
+      sg.fillStyle = lg;
+      sg.fillRect(32 - w / 2, 32 - h / 2, w, h);
+    }
+  }
+  const starTex = tex(starC.c);
+  const twinkles: { mat: THREE.SpriteMaterial; sp: THREE.Sprite; ph: number }[] = [];
+  scene.updateMatrixWorld(true);
+  for (const id of ["cap", "slogan-towel", "bandana", "mini-cd-keyring", "letter-patch", "laptop", "dj-controller"]) {
+    const bb = new THREE.Box3();
+    let any = false;
+    for (const p of picks) {
+      if (p.id !== id) continue;
+      bb.expandByObject(p.object);
+      any = true;
+    }
+    if (!any) continue;
+    const mat = track(
+      new THREE.SpriteMaterial({ map: starTex, color: "#fff0d2", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }),
+    );
+    const sp = new THREE.Sprite(mat);
+    sp.position.set((bb.min.x + bb.max.x) / 2, bb.max.y + 0.06, (bb.min.z + bb.max.z) / 2);
+    sp.scale.setScalar(0.1);
+    scene.add(sp);
+    twinkles.push({ mat, sp, ph: Math.random() * 6.28 });
+  }
 
   // Fold the static props together (must stay after everything is built, and skip whatever moves or is tinted by mood).
   mergeStatic(
@@ -1655,12 +1751,30 @@ export function buildRoom(scene: THREE.Scene): Room {
       lapMat.color.setScalar(0.85 + hLap * 0.45);
       (lapGlow.material as THREE.SpriteMaterial).opacity = hLap * 0.5;
       moduleHooks.tick(dt, hoverId === "lamp");
+      for (let i = 0; i < balloonPivots.length; i++) {
+        balloonPivots[i].rotation.z = Math.sin(t * 0.9 + i * 1.9) * 0.05;
+        balloonPivots[i].rotation.x = Math.sin(t * 0.7 + i * 2.3) * 0.03;
+      }
+      dustMat.opacity += (dustTarget - dustMat.opacity) * Math.min(1, dt * 2);
+      for (let i = 0; i < dustN; i++) {
+        const d = dustSeed[i];
+        dustPos[i * 3] = d.x + Math.sin(t * 0.21 + d.ph) * 0.18;
+        dustPos[i * 3 + 1] = 0.2 + ((d.y0 - 0.2 + t * d.sp) % 2.9);
+        dustPos[i * 3 + 2] = d.z + Math.cos(t * 0.17 + d.ph) * 0.12;
+      }
+      dustGeo.attributes.position.needsUpdate = true;
+      for (const w of twinkles) {
+        const v = Math.pow(0.5 + 0.5 * Math.sin(t * 1.7 + w.ph), 5);
+        w.mat.opacity = 0.12 + 0.88 * v;
+        w.mat.rotation = t * 0.25 + w.ph;
+        w.sp.scale.setScalar(0.06 + 0.1 * v);
+      }
       lensMats.forEach((m, i) => m.color.copy(lensBase[i]).multiplyScalar(1 + hLight * 1.4));
       ballMat.emissiveIntensity = hBall * 0.12;
       for (const f of fixtureGlow) (f.material as THREE.SpriteMaterial).opacity = hLight * 0.75;
       (ballGlow.material as THREE.SpriteMaterial).opacity = hBall * 0.5;
       ballMat.envMapIntensity = 3.2 + hBall * 1.8;
-      ball.position.y = 2.82 + Math.sin(t * 0.6) * 0.008;
+      ball.position.y = 2.9 + Math.sin(t * 0.6) * 0.008;
       fixtures.forEach((f, i) => {
         // stage lights sway together with the spinning ball
         f.target.position.x = spin ? Math.sin(angle * 2.2 + i * 3) * 1.3 : 0;
