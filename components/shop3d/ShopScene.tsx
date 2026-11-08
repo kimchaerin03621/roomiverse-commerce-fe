@@ -65,7 +65,7 @@ export default function ShopScene() {
     if (!el) return;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
@@ -310,26 +310,43 @@ export default function ShopScene() {
 
     const glow = new Map<THREE.Object3D, number>();
     // Automatic quality: if the frames keep coming slowly (an older laptop, integrated graphics), draw fewer pixels.
-    // Steps only go down, and only after a settling period, so a hiccup while the page loads does not lower anything.
-    const baseRatio = Math.min(window.devicePixelRatio, 1.25);
-    const STEPS = [1, 0.8, 0.65, 0.5];
+    // Quality drops only after a long, steady slowdown (a hiccup while loading or switching tabs does not count),
+    // and climbs back once frames are fast again. If climbing back makes it slow again, that level becomes the limit.
+    const baseRatio = Math.min(window.devicePixelRatio, 1.5);
+    const STEPS = [1, 0.85, 0.7, 0.55];
     let step = 0;
+    let bestStep = 0; // the sharpest level this machine has been shown to cope with
     let frames = 0;
     let spent = 0;
+    let n = 0;
+    let justUp = false;
+    const apply = () => {
+      renderer.setPixelRatio(baseRatio * STEPS[step]);
+      size();
+      spent = 0;
+      n = 0;
+    };
     const tick = () => {
       if (!visible) return;
       const raw = clock.getDelta();
       const dt = Math.min(raw, 0.05);
       frames++;
-      if (frames > 120 && raw < 0.2) {
+      if (frames > 180 && raw < 0.25) {
         spent += raw;
-        if (frames % 40 === 0) {
-          if (spent / 40 > 0.03 && step < STEPS.length - 1) {
-            step++;
-            renderer.setPixelRatio(baseRatio * STEPS[step]);
-            size();
-          }
+        n++;
+        const avg = spent / n;
+        if (n >= 90 && avg > 0.034 && step < STEPS.length - 1) {
+          step++;
+          if (justUp) bestStep = step; // climbing back made it slow again: stay at this level from now on
+          justUp = false;
+          apply();
+        } else if (n >= 240 && avg < 0.0185 && step > bestStep) {
+          step--;
+          justUp = true;
+          apply();
+        } else if (n >= 240) {
           spent = 0;
+          n = 0;
         }
       }
       const time = clock.elapsedTime;

@@ -285,7 +285,7 @@ function mergeStatic(scene: THREE.Scene, skipObjs: THREE.Object3D[], skipMats: S
   const buckets = new Map<string, { mat: THREE.Material; items: THREE.Mesh[] }>();
   const blocked = (o: THREE.Object3D) => {
     for (let p: THREE.Object3D | null = o; p; p = p.parent) {
-      if (!p.visible || p.userData.part || skipObjs.includes(p)) return true;
+      if (!p.visible || p.userData.part || p.userData.noMerge || skipObjs.includes(p)) return true;
     }
     return false;
   };
@@ -758,6 +758,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     const dark = std("#1a1618", 0.4, 0.3);
     // Stand-in controller, replaced by the real model (public/models/dj-controller.glb) as soon as it has loaded.
     const standIn = new THREE.Group();
+    standIn.userData.noMerge = true; // it is removed when the real model loads, so it must not be merged into a copy that stays behind
     g.add(standIn);
     rbox(0.78, 0.05, 0.42, 0.012, dark, 0, 1.0, 0.02, standIn);
     for (const x of [-0.22, 0.22]) {
