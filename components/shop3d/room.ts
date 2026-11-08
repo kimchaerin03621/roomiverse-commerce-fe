@@ -143,7 +143,7 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
   };
 
   let neonMesh: THREE.Mesh | null = null;
-  let glow: THREE.Sprite | null = null;
+  let glow: THREE.Mesh | null = null;
   const root = new THREE.Group();
   root.position.y = 0;
   scene.add(root);
@@ -161,7 +161,7 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
       if (n.startsWith("E_") || src.name.startsWith("E_")) {
         const neon = /neon|led/i.test(src.name + n) || n === "Text";
         const base = new THREE.Color(neon ? (/led/i.test(src.name + n) ? "#ff3d8a" : "#ff2f7e") : "#ffa24d");
-        const m = track(new THREE.MeshBasicMaterial({ color: base }));
+        const m = track(new THREE.MeshBasicMaterial({ color: base, vertexColors: !!mesh.geometry.attributes.color }));
         mesh.material = m;
         emitters.push({ mat: m, base, kind: neon ? "neon" : "lamp" });
         if (/neon/i.test(src.name + n) || n === "Text") neonMesh = mesh;
@@ -239,9 +239,14 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
       gr.addColorStop(1, "rgba(255,24,110,0)");
       g.fillStyle = gr;
       g.fillRect(0, 0, 128, 128);
-      const gl = new THREE.Sprite(track(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true })));
-      gl.scale.set(3.0, 1.2, 1); // normal blending: an additive pink over the green wall turns grey
-      gl.position.set(0, 2.2, -4.3);
+      // A flat plane lying on the wall, not a camera-facing sprite: a sprite is cut off by the wall when seen from the side.
+      // Normal blending: an additive pink over the green wall turns grey.
+      const gl = new THREE.Mesh(
+        track(new THREE.PlaneGeometry(2.5, 1.0)),
+        track(new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })),
+      );
+      gl.position.set(0, 2.2, -4.357);
+      gl.renderOrder = 1;
       root.add(gl);
       glow = gl;
     }
@@ -254,7 +259,7 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
   let nextFlick = 4;
   const apply = () => {
     uW.value.set(weights.base, weights.warm * lampC, weights.party, weights.stage);
-    if (glow) (glow.material as THREE.SpriteMaterial).opacity = (0.25 + 0.75 * weights.neon) * flick;
+    if (glow) (glow.material as THREE.MeshBasicMaterial).opacity = (0.25 + 0.75 * weights.neon) * flick;
     for (const e of emitters) e.mat.color.copy(e.base).multiplyScalar(e.kind === "lamp" ? (0.4 + 0.9 * weights.lamp) * (0.08 + 0.92 * lampC) * (1 + lampHover * 0.5) : (0.35 + 0.9 * weights.neon) * flick);
   };
   return {
@@ -342,7 +347,12 @@ function mergeStatic(scene: THREE.Scene, skipObjs: THREE.Object3D[], skipMats: S
     mesh.receiveShadow = items[0].receiveShadow;
     mesh.name = "merged";
     scene.add(mesh);
-    for (const m of items) m.visible = false;
+    for (const m of items) {
+      m.visible = false;
+      // a hidden original never moves again: keep it out of the per-frame matrix update (thousands of nodes add up on slow laptops)
+      m.matrixAutoUpdate = false;
+      m.matrixWorldAutoUpdate = false;
+    }
     merged += items.length;
   }
   return merged;
@@ -421,6 +431,12 @@ export function buildRoom(scene: THREE.Scene): Room {
       }),
     );
   const std = (color: THREE.ColorRepresentation, rough = 0.85, metal = 0) => track(new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal }));
+  /** A material whose colour map is drawn on a small canvas (paper patterns, labels, icing...). */
+  const paint = (w: number, h: number, draw: (c: CanvasRenderingContext2D) => void, rough = 0.8, metal = 0) => {
+    const { c, g } = canvas(w, h);
+    draw(g);
+    return track(new THREE.MeshStandardMaterial({ map: tex(c), roughness: rough, metalness: metal }));
+  };
 
   const rgbOf = (hex: string) => {
     const n = parseInt(hex.replace("#", ""), 16);
@@ -920,6 +936,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     const rug = add(geo, rugMat, 0, 0.014, -0.55);
     rug.rotation.x = -Math.PI / 2;
     rug.castShadow = false;
+    rug.visible = false; // replaced by the woven wool rug baked in the Blender module
   }
 
   // ---------- Left wall: sofa with the goods on it ----------
@@ -1101,20 +1118,30 @@ export function buildRoom(scene: THREE.Scene): Room {
         cg2.fillRect(0, 70, 2048, 8);
         cg2.fillRect(0, 562, 2048, 8);
         if (logo) {
-          const h = 420;
-          const w = (h * logo.width) / logo.height;
-          cg2.drawImage(logo, 2048 - w - 120, 320 - h / 2, w, h);
+          // fit the logo inside the cloth with a margin at both ends (it used to be 420 tall, which pushed the R past the edge)
+          const w = 2048 - 2 * 150;
+          const h = (w * logo.height) / logo.width;
+          cg2.drawImage(logo, 150, 320 - h / 2, w, h);
         }
       };
       paintTowel();
       const tt = tex(c);
       const logoImg = new Image();
+      // the back face gets its own copy of the print, flipped across the cloth's width, so the logo reads the right way round from behind
+      const ttBack = tt.clone();
+      ttBack.repeat.set(1, -1);
+      ttBack.offset.set(0, 1);
+      ttBack.needsUpdate = true;
       logoImg.onload = () => {
         paintTowel(logoImg);
         tt.needsUpdate = true;
+        ttBack.needsUpdate = true;
       };
       logoImg.src = "/shop3d/slogan.png";
-      const mat = track(new THREE.MeshStandardMaterial({ map: tt, roughness: 1, normalMap: file("fabric_normal.jpg", false, [6, 3]), normalScale: new THREE.Vector2(0.6, 0.6), side: THREE.DoubleSide }));
+      const mat = track(new THREE.MeshStandardMaterial({ map: tt, roughness: 1, normalMap: file("fabric_normal.jpg", false, [6, 3]), normalScale: new THREE.Vector2(0.6, 0.6), side: THREE.FrontSide }));
+      const backMat = track(mat.clone());
+      backMat.map = ttBack;
+      backMat.side = THREE.BackSide;
       // path in the sofa's (z, y) plane: behind the backrest -> over its top -> down its face -> across the seat
       const path: [number, number][] = [[-0.52, 0.55], [-0.5, 1.0], [-0.42, 1.15], [-0.3, 1.16], [-0.2, 1.02], [-0.14, 0.78], [-0.1, 0.67], [0.05, 0.655], [0.3, 0.65], [0.5, 0.65]];
       const cum = [0];
@@ -1170,6 +1197,7 @@ export function buildRoom(scene: THREE.Scene): Room {
       };
       const cloth = tag(add(geo, mat, 0, 0, 0, g), "slogan-towel");
       cloth.castShadow = false;
+      tag(add(geo, backMat, 0, 0, 0, g, false), "slogan-towel");
       hitBox(0.7, 0.55, 0.45, -0.45, 0.88, -0.15, g, "slogan-towel");
     }
     // bandana: a square folded into a triangle, thrown over the right armrest with the point hanging down
@@ -1296,16 +1324,92 @@ export function buildRoom(scene: THREE.Scene): Room {
       cyl(0.13, 0.13, 0.012, brass(), x, 0.008, 0, g, 28);
     }
     for (const c of g.children) c.visible = false; // baked table body replaces these
-    box(0.42, 0.045, 0.42, std("#c9a26a", 0.9), -0.45, 0.52, -0.08, g).rotation.y = 0.35;
-    cyl(0.17, 0.17, 0.02, std("#e7b04a", 0.8), -0.45, 0.555, -0.08, g, 24);
+    box(0.42, 0.045, 0.42, photoMat("wood_warm", { repeat: [1.2, 1.2], rough: 0.7 }), -0.45, 0.52, -0.08, g).rotation.y = 0.35;
+    {
+      // a layer cake on the board: sponge and jam layers, icing with piped rosettes, a cherry and candles
+      const cake = new THREE.Group();
+      cake.position.set(-0.45, 0.5425, -0.08);
+      cake.rotation.y = 0.35;
+      g.add(cake);
+      const side = paint(512, 64, (c) => {
+        const bands: [number, number, string][] = [[0, 70, "#f7e8d4"], [14, 34, "#e9c27a"], [34, 38, "#c7284f"], [38, 56, "#e9c27a"], [56, 60, "#fff3e6"], [60, 64, "#e9c27a"]];
+        for (const [y0, y1, col] of bands) {
+          c.fillStyle = col;
+          c.fillRect(0, y0, 512, y1 - y0);
+        }
+        c.fillStyle = "#f7e8d4";
+        for (let q = 0; q < 512; q += 21) {
+          c.beginPath();
+          c.arc(q + 8, 14, 9, 0, 7);
+          c.fill();
+          c.fillRect(q, 0, 17, 14);
+        }
+      }, 0.55);
+      const topM = paint(256, 256, (c) => {
+        c.fillStyle = "#f7e8d4";
+        c.fillRect(0, 0, 256, 256);
+        c.strokeStyle = "rgba(240,200,210,0.8)";
+        c.lineWidth = 3;
+        for (let r = 30; r < 128; r += 22) {
+          c.beginPath();
+          c.arc(128, 128, r, 0, 7);
+          c.stroke();
+        }
+      }, 0.5);
+      const cm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 40), [side, topM, topM]);
+      cm.position.y = 0.04;
+      cm.castShadow = cm.receiveShadow = true;
+      cake.add(cm);
+      const icing = std("#f71d64", 0.4);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        add(new THREE.SphereGeometry(0.0125, 10, 8), icing, Math.cos(a) * 0.092, 0.086, Math.sin(a) * 0.092, cake);
+      }
+      add(new THREE.SphereGeometry(0.02, 14, 10), track(new THREE.MeshPhysicalMaterial({ color: "#c8102e", roughness: 0.2, clearcoat: 1 })), 0, 0.098, 0, cake);
+      const flame = track(new THREE.MeshBasicMaterial({ color: "#ffb347" }));
+      for (const [cx2, cz2, col] of [[-0.05, 0.03, "#ffd9e6"], [0.05, 0.02, "#c14ed4"], [0.0, -0.06, "#fff3e6"]] as const) {
+        cyl(0.004, 0.004, 0.05, std(col, 0.6), cx2, 0.105, cz2, cake, 8);
+        add(new THREE.SphereGeometry(0.0055, 8, 6), flame, cx2, 0.136, cz2, cake, false).scale.y = 1.6;
+      }
+    }
     const glassM = track(new THREE.MeshPhysicalMaterial({ color: "#ffffff", roughness: 0.05, transparent: true, opacity: 0.26, clearcoat: 1 }));
+    const strawM = paint(16, 64, (c) => {
+      c.fillStyle = "#fff";
+      c.fillRect(0, 0, 16, 64);
+      c.fillStyle = "#f71d64";
+      for (let y = 0; y < 64; y += 14) c.fillRect(0, y, 16, 7);
+    }, 0.5);
     for (const [c, x, z] of [["#f71d64", -0.05, -0.14], ["#ffb792", 0.08, 0.02], ["#c14ed4", 0.2, -0.1]] as const) {
       cyl(0.045, 0.036, 0.13, glassM, x, 0.565, z, g, 18).castShadow = false;
       cyl(0.04, 0.033, 0.07, track(new THREE.MeshStandardMaterial({ color: c, roughness: 0.2, emissive: c, emissiveIntensity: 0.2 })), x, 0.545, z, g, 18);
+      cyl(0.0035, 0.0035, 0.17, strawM, x + 0.012, 0.6, z, g, 6).rotation.z = -0.16;
     }
     const bottleM = track(new THREE.MeshPhysicalMaterial({ color: "#1b5a38", roughness: 0.12, clearcoat: 1 }));
     cyl(0.04, 0.04, 0.26, bottleM, 0.38, 0.62, -0.18, g, 18);
     cyl(0.015, 0.04, 0.07, bottleM, 0.38, 0.79, -0.18, g, 14);
+    {
+      // paper label, gold foil on the neck
+      const labelM = paint(256, 128, (c) => {
+        c.fillStyle = "#f4ead2";
+        c.fillRect(0, 0, 256, 128);
+        c.fillStyle = "#1b5a38";
+        c.fillRect(0, 10, 256, 4);
+        c.fillRect(0, 114, 256, 4);
+        c.font = '900 40px "Pretendard Variable", Arial Black, sans-serif';
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillStyle = "#f71d64";
+        c.fillText("ROOMi", 128, 52);
+        c.font = '700 16px Arial, sans-serif';
+        c.fillStyle = "#1b5a38";
+        c.fillText("PARTY SPARKLING", 128, 88);
+      }, 0.6);
+      const lab = add(new THREE.CylinderGeometry(0.0408, 0.0408, 0.12, 24, 1, true), labelM, 0.38, 0.62, -0.18, g, false);
+      lab.rotation.y = -0.5;
+      const foil = std("#d9b45a", 0.3, 0.9);
+      cyl(0.0185, 0.0285, 0.05, foil, 0.38, 0.81, -0.18, g, 14);
+      cyl(0.0195, 0.0195, 0.006, foil, 0.38, 0.838, -0.18, g, 14);
+    }
 
     for (const [x, z, col, rot] of [[-0.48, 0.28, "#f71d64", 0.2], [-0.28, 0.34, "#c14ed4", -0.3]] as const) {
       const kg = new THREE.Group();
@@ -1352,6 +1456,75 @@ export function buildRoom(scene: THREE.Scene): Room {
 
     const mats = ["#f71d64", "#c14ed4", "#ffb792", "#f0f0f0"].map((c) => std(c, 0.55));
     // Each cell holds one calm group: balloons, hats, rolls, gifts, cups, poppers.
+    // One painted sheet for every shelf item (hats, rolls, gifts, cups, poppers): one material, so they draw as one mesh.
+    const SHEET = 4;
+    const sheetC = canvas(512, 512);
+    const drawCell = (idx: number, fn: (c: CanvasRenderingContext2D) => void) => {
+      const c = sheetC.g;
+      c.save();
+      c.translate((idx % SHEET) * 128, Math.floor(idx / SHEET) * 128);
+      c.beginPath();
+      c.rect(0, 0, 128, 128);
+      c.clip();
+      fn(c);
+      c.restore();
+    };
+    const dots = (base: string, dot: string) => (c: CanvasRenderingContext2D) => {
+      c.fillStyle = base;
+      c.fillRect(0, 0, 128, 128);
+      c.fillStyle = dot;
+      for (let r = 0; r < 7; r++) for (let q = 0; q < 8; q++) {
+        c.beginPath();
+        c.arc(q * 17 + (r % 2) * 8 + 6, r * 19 + 9, 3.4, 0, 7);
+        c.fill();
+      }
+    };
+    const rolled = (col: string) => (c: CanvasRenderingContext2D) => {
+      c.fillStyle = col;
+      c.fillRect(0, 0, 128, 128);
+      for (let y = 0; y < 128; y += 4) {
+        c.fillStyle = y % 8 === 0 ? "rgba(0,0,0,0.13)" : "rgba(255,255,255,0.12)";
+        c.fillRect(0, y, 128, 2);
+      }
+    };
+    const striped = (a: string, b: string) => (c: CanvasRenderingContext2D) => {
+      c.fillStyle = a;
+      c.fillRect(0, 0, 128, 128);
+      c.fillStyle = b;
+      for (let q = 0; q < 128; q += 16) c.fillRect(q, 0, 8, 128);
+    };
+    drawCell(0, dots("#f71d64", "#fff7ee"));
+    drawCell(1, dots("#c14ed4", "#ffd9e6"));
+    drawCell(2, dots("#ffb792", "#fff7ee"));
+    drawCell(3, rolled("#c14ed4"));
+    drawCell(4, rolled("#ffb792"));
+    drawCell(5, rolled("#f0f0f0"));
+    drawCell(6, dots("#f71d64", "#ffe3ee"));
+    drawCell(7, (c) => {
+      c.fillStyle = "#c14ed4";
+      c.fillRect(0, 0, 128, 128);
+      c.fillStyle = "#f3d9fb";
+      for (let q = -128; q < 256; q += 24) {
+        c.save();
+        c.translate(q, 0);
+        c.rotate(0.6);
+        c.fillRect(0, 0, 7, 260);
+        c.restore();
+      }
+    });
+    drawCell(8, striped("#f71d64", "#fff7f2"));
+    drawCell(9, striped("#f4f1ee", "#f71d64"));
+    drawCell(10, striped("#f71d64", "#f6d98a"));
+    drawCell(11, striped("#c14ed4", "#f6d98a"));
+    drawCell(12, striped("#ffb792", "#f6d98a"));
+    const sheetMat = track(new THREE.MeshStandardMaterial({ map: tex(sheetC.c), roughness: 0.65 }));
+    const cellUV = <T extends THREE.BufferGeometry>(geo: T, idx: number) => {
+      const uv = geo.attributes.uv;
+      const u0 = (idx % SHEET) / SHEET;
+      const v0 = 1 - (Math.floor(idx / SHEET) + 1) / SHEET;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + 0.004 + uv.getX(i) * (1 / SHEET - 0.008), v0 + 0.004 + uv.getY(i) * (1 / SHEET - 0.008));
+      return geo;
+    };
     const cell = (cx: number, cy: number, kind: number) => {
       const by = y0 + cy * cw + 0.03;
       if (kind === 0) {
@@ -1368,19 +1541,62 @@ export function buildRoom(scene: THREE.Scene): Room {
           balloonPivots.push(pv);
         }
       } else if (kind === 1) {
-        for (let i = 0; i < 3; i++) add(new THREE.ConeGeometry(0.06, 0.2, 18), mats[i], cx - 0.13 + i * 0.13, by + 0.1, 0, g);
+        // party hats: dotted paper cones with a brim band and a pompom
+        for (let i = 0; i < 3; i++) {
+          const x = cx - 0.13 + i * 0.13;
+          add(cellUV(new THREE.ConeGeometry(0.06, 0.2, 24), i), sheetMat, x, by + 0.1, 0, g);
+          cyl(0.064, 0.064, 0.012, std("#fff3e6", 0.8), x, by + 0.006, 0, g, 24);
+          add(new THREE.SphereGeometry(0.017, 12, 10), std("#fff3e6", 0.95), x, by + 0.205, 0, g);
+        }
       } else if (kind === 2) {
-        for (let i = 0; i < 3; i++) cyl(0.055, 0.055, 0.13, mats[(i + 1) % 4], cx - 0.14 + i * 0.14, by + 0.065, 0, g, 18);
+        // rolls of crepe streamer: wound ridges on the side, a dark core on top
+        const core = std("#2a1020", 0.9);
+        for (let i = 0; i < 3; i++) {
+          const x = cx - 0.14 + i * 0.14;
+          add(cellUV(new THREE.CylinderGeometry(0.055, 0.055, 0.13, 24), 3 + i), sheetMat, x, by + 0.065, 0, g);
+          const hole = add(new THREE.CircleGeometry(0.02, 16), core, x, by + 0.1305, 0, g, false);
+          hole.rotation.x = -Math.PI / 2;
+        }
       } else if (kind === 3) {
+        // wrapped gifts: patterned paper, a ribbon crossing over the top and a bow
+        const ribbon = std("#fff0d6", 0.45);
         for (let i = 0; i < 2; i++) {
           const w = 0.16 + i * 0.04;
-          rbox(w, w * 0.9, w, 0.006, mats[(i + 2) % 4], cx - 0.1 + i * 0.17, by + (w * 0.9) / 2, 0, g);
-          box(w + 0.006, 0.02, 0.02, std("#fff", 0.4), cx - 0.1 + i * 0.17, by + (w * 0.9) / 2, w / 2, g);
+          const h = w * 0.9;
+          const x = cx - 0.1 + i * 0.17;
+          const gift = rbox(w, h, w, 0.006, sheetMat, x, by + h / 2, 0, g);
+          cellUV(gift.geometry, 6 + i);
+          box(0.02, h + 0.004, w + 0.004, ribbon, x, by + h / 2, 0, g);
+          box(w + 0.004, h + 0.004, 0.02, ribbon, x, by + h / 2, 0, g);
+          for (const sg of [-1, 1]) {
+            const loop = add(new THREE.SphereGeometry(0.028, 12, 8), ribbon, x + sg * 0.026, by + h + 0.012, 0, g);
+            loop.scale.set(1.3, 0.55, 0.8);
+            loop.rotation.z = sg * 0.4;
+          }
+          add(new THREE.SphereGeometry(0.012, 10, 8), ribbon, x, by + h + 0.008, 0, g);
         }
       } else if (kind === 4) {
-        for (let i = 0; i < 2; i++) for (let k = 0; k < 4; k++) cyl(0.05, 0.038, 0.055, std(i === 0 ? "#f71d64" : "#f0f0f0", 0.5), cx - 0.1 + i * 0.2, by + 0.03 + k * 0.035, 0, g, 16);
+        // stacks of striped paper cups, the top one open
+        for (let i = 0; i < 2; i++) {
+          const x = cx - 0.1 + i * 0.2;
+          for (let k = 0; k < 4; k++) add(cellUV(new THREE.CylinderGeometry(0.05, 0.038, 0.055, 24), 8 + i), sheetMat, x, by + 0.03 + k * 0.035, 0, g);
+          cyl(0.0505, 0.0505, 0.004, std(i === 0 ? "#ffd9e6" : "#fff", 0.6), x, by + 0.03 + 3 * 0.035 + 0.026, 0, g, 24);
+          const inner = add(new THREE.CircleGeometry(0.045, 20), std("#4a0f26", 0.8), x, by + 0.03 + 3 * 0.035 + 0.0275, 0, g, false);
+          inner.rotation.x = -Math.PI / 2;
+        }
       } else {
-        for (let i = 0; i < 3; i++) add(new THREE.ConeGeometry(0.04, 0.2, 12), mats[(i + 3) % 4], cx - 0.12 + i * 0.12, by + 0.1, 0, g).rotation.z = 0.2 - i * 0.2;
+        // party poppers: foil stripes, a gold cap and a streamer curl
+        const popCols = ["#f71d64", "#c14ed4", "#ffb792"];
+        for (let i = 0; i < 3; i++) {
+          const pg = new THREE.Group();
+          pg.position.set(cx - 0.12 + i * 0.12, by + 0.1, 0);
+          pg.rotation.z = 0.2 - i * 0.2;
+          g.add(pg);
+          add(cellUV(new THREE.ConeGeometry(0.04, 0.2, 18), 10 + i), sheetMat, 0, 0, 0, pg);
+          cyl(0.043, 0.043, 0.012, std("#e7c26a", 0.35, 0.8), 0, -0.1, 0, pg, 18);
+          const curl = add(new THREE.TorusGeometry(0.016, 0.0022, 6, 14, 4.6), std(popCols[(i + 1) % 3], 0.5), 0.004, 0.104, 0, pg);
+          curl.rotation.y = 0.9;
+        }
       }
     };
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) cell(-((cols * cw) / 2) + (i + 0.5) * cw, j, j * cols + i);
@@ -1451,43 +1667,82 @@ export function buildRoom(scene: THREE.Scene): Room {
     blob(W - 0.32, -1.6, 0.8, 2.0, 0, 0.8);
   }
 
-  // ---------- Light spots thrown by the disco ball (a few, only after dark) ----------
-  const spotGeo = track(new THREE.PlaneGeometry(0.2, 0.2));
-  const spotMats = ["#ff5c9a", "#d77bff", "#ffffff"].map((c) => track(new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })));
-  const dirs: THREE.Vector3[] = [];
-  {
-    const ico = new THREE.IcosahedronGeometry(1, 2).attributes.position;
-    const seen = new Set<string>();
-    for (let i = 0; i < ico.count; i++) {
-      const v = new THREE.Vector3(ico.getX(i), ico.getY(i), ico.getZ(i));
-      const key = v.toArray().map((n) => n.toFixed(3)).join();
-      if (!seen.has(key) && seen.size % 5 === 0) dirs.push(v);
-      seen.add(key);
+  // ---------- Light spots thrown by the disco ball ----------
+  // Each mirror tile of a real ball throws a small, soft-edged, slightly rotated square. It stretches into a streak where the beam
+  // lands at a slant, gets dimmer with distance, and sparkles. 64 of them are drawn as one instanced mesh.
+  const SPOT_N = 64;
+  const softSquare = (() => {
+    const { c, g } = canvas(64, 64);
+    const img = g.createImageData(64, 64);
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 64; x++) {
+        const u = (x + 0.5) / 32 - 1;
+        const v = (y + 0.5) / 32 - 1;
+        const d = Math.pow(Math.pow(Math.abs(u), 4) + Math.pow(Math.abs(v), 4), 0.25); // rounded-square distance
+        let a2 = 1 - Math.min(1, Math.max(0, (d - 0.42) / 0.55));
+        a2 = a2 * a2 * (3 - 2 * a2);
+        a2 = Math.min(1, a2 + 0.2 * Math.exp(-d * d * 2.4)); // faint halo around the core
+        const i = (y * 64 + x) * 4;
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+        img.data[i + 3] = Math.round(a2 * 255);
+      }
     }
+    g.putImageData(img, 0, 0);
+    return tex(c);
+  })();
+  const spotMat = track(new THREE.MeshBasicMaterial({ map: softSquare, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, color: "#ffffff" }));
+  const spotMesh = new THREE.InstancedMesh(track(new THREE.PlaneGeometry(1, 1)), spotMat, SPOT_N);
+  spotMesh.frustumCulled = false;
+  spotMesh.renderOrder = 2;
+  spotMesh.visible = false;
+  spotMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const spotHue = ["#ffffff", "#ffffff", "#ffffff", "#ffd0e4", "#e7c4ff", "#ffe6c8"].map((c) => new THREE.Color(c));
+  const spotSeed: { dir: THREE.Vector3; size: number; ang: number; gain: number; ph: number; hue: THREE.Color }[] = [];
+  for (let i = 0; i < SPOT_N; i++) {
+    const y = 1 - (2 * (i + 0.5)) / SPOT_N;
+    const r = Math.sqrt(1 - y * y);
+    const phi = i * 2.399963;
+    const h1 = ((i * 7919) % 97) / 97;
+    const h2 = ((i * 104729) % 89) / 89;
+    spotSeed.push({
+      dir: new THREE.Vector3(Math.cos(phi) * r, y, Math.sin(phi) * r),
+      size: 0.05 + h1 * 0.05,
+      ang: h2 * Math.PI,
+      gain: 0.55 + 0.45 * h1,
+      ph: h2 * 6.28,
+      hue: spotHue[i % spotHue.length],
+    });
+    spotMesh.setColorAt(i, spotHue[i % spotHue.length]);
   }
-  const spots = dirs.map((_, i) => {
-    const m = new THREE.Mesh(spotGeo, spotMats[i % spotMats.length]);
-    m.userData.s = 0.5 + ((i * 37) % 10) / 14;
-    m.frustumCulled = false;
-    scene.add(m);
-    return m;
-  });
+  scene.add(spotMesh);
   const ballPos = new THREE.Vector3();
   const rot = new THREE.Matrix4();
+  const rotX = new THREE.Matrix4();
   const tmp = new THREE.Vector3();
+  const sN = new THREE.Vector3();
+  const sP = new THREE.Vector3();
+  const sQ = new THREE.Vector3();
+  const sA = new THREE.Vector3();
+  const sB = new THREE.Vector3();
+  const sMat = new THREE.Matrix4();
+  const sCol = new THREE.Color();
   const throwSpots = (t: number, strength: number) => {
+    spotMesh.visible = strength > 0.01;
+    if (!spotMesh.visible) return;
     ball.getWorldPosition(ballPos);
     rot.makeRotationY(t * 0.6);
+    rotX.makeRotationX(Math.sin(t * 0.13) * 0.1);
+    rot.multiply(rotX);
     const lim = [
       [-W, W, "x"],
       [0, H, "y"],
       [Z0, Z1 - 0.05, "z"],
     ] as const;
-    for (let i = 0; i < spots.length; i++) {
-      const m = spots[i];
-      tmp.copy(dirs[i]).applyMatrix4(rot);
+    for (let i = 0; i < SPOT_N; i++) {
+      const sd = spotSeed[i];
+      tmp.copy(sd.dir).applyMatrix4(rot);
       let best = Infinity;
-      let hitAxis = "y";
+      let hitAxis: "x" | "y" | "z" = "y";
       let sign = 1;
       for (const [lo, hi, ax] of lim) {
         const dv = tmp[ax];
@@ -1501,18 +1756,36 @@ export function buildRoom(scene: THREE.Scene): Room {
         }
       }
       if (!isFinite(best)) {
-        m.visible = false;
+        sMat.makeScale(0, 0, 0);
+        spotMesh.setMatrixAt(i, sMat);
         continue;
       }
-      m.visible = strength > 0.01;
-      m.position.copy(ballPos).addScaledVector(tmp, best - 0.02);
-      m.rotation.set(0, 0, 0);
-      if (hitAxis === "x") m.rotation.y = (-sign * Math.PI) / 2;
-      else if (hitAxis === "y") m.rotation.x = ((sign > 0 ? 1 : -1) * Math.PI) / 2;
-      else if (sign > 0) m.rotation.y = Math.PI;
-      m.scale.setScalar((0.6 + best * 0.12) * (m.userData.s as number));
-      (m.material as THREE.MeshBasicMaterial).opacity = strength * 0.45;
+      // surface normal pointing into the room
+      sN.set(0, 0, 0);
+      sN[hitAxis] = -sign;
+      const cosI = Math.max(0.12, Math.abs(tmp[hitAxis]));
+      const stretch = Math.min(5, 1 / cosI);
+      // in-plane axis along the beam's slant
+      sP.copy(tmp).addScaledVector(sN, -tmp.dot(sN));
+      if (sP.lengthSq() < 1e-6) sP.set(sN.y, sN.z, sN.x);
+      sP.normalize();
+      sQ.crossVectors(sN, sP);
+      const size = sd.size + best * 0.012;
+      const ca = Math.cos(sd.ang);
+      const sa = Math.sin(sd.ang);
+      // square turned by ang inside the plane, then stretched along the slant
+      sA.copy(sP).multiplyScalar(ca * stretch).addScaledVector(sQ, sa).multiplyScalar(size);
+      sB.copy(sP).multiplyScalar(-sa * stretch).addScaledVector(sQ, ca).multiplyScalar(size);
+      sMat.makeBasis(sA, sB, sN);
+      sMat.setPosition(ballPos.x + tmp.x * (best - 0.015), ballPos.y + tmp.y * (best - 0.015), ballPos.z + tmp.z * (best - 0.015));
+      spotMesh.setMatrixAt(i, sMat);
+      const twinkle = 0.72 + 0.28 * Math.sin(t * 3.1 + sd.ph);
+      const k = strength * sd.gain * twinkle * Math.sqrt(cosI) / (1 + 0.04 * best * best) * 0.9;
+      sCol.copy(sd.hue).multiplyScalar(k);
+      spotMesh.setColorAt(i, sCol);
     }
+    spotMesh.instanceMatrix.needsUpdate = true;
+    if (spotMesh.instanceColor) spotMesh.instanceColor.needsUpdate = true;
   };
 
   // ---------- Lasers (rave mode only): thin additive beams sweeping from the stage lights ----------
