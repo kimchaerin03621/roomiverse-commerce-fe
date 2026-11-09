@@ -2516,6 +2516,12 @@ export function buildRoom(scene: THREE.Scene): Room {
             const k = m.clone();
             // the room's environment map belongs to the main renderer; the viewer lights these from its own
             if ("envMap" in k) (k as THREE.MeshStandardMaterial).envMap = null;
+            // the pointer is still over the product when it opens, so the room copy is glowing pink from the hover: start from its resting look
+            const base = m.userData.baseEmissive as THREE.Color | undefined;
+            if (base) {
+              (k as THREE.MeshStandardMaterial).emissive.copy(base);
+              (k as THREE.MeshStandardMaterial).emissiveIntensity = m.userData.baseEmissiveIntensity as number;
+            }
             return k;
           };
           mesh.material = Array.isArray(mesh.material) ? mesh.material.map(one) : one(mesh.material);
