@@ -1291,15 +1291,43 @@ export function buildRoom(scene: THREE.Scene): Room {
           for (let i = 0; i < pp.count; i++) {
             const x = pp.getX(i);
             const z = pp.getY(i);
-            uvs.setXY(i, x * 5, z * 5);
+            uvs.setXY(i, (x + 0.13) / 0.26, z / 0.23);
             pp.setXYZ(i, x, -drop(x, z) + dy, z);
           }
           gm.computeVertexNormals();
           gm.applyMatrix4(place);
           return gm;
         };
-        const topMat = fabric("#f6196a", [6, 6], 0.78);
-        topMat.map = twillTex;
+        const topMat = fabric("#ffffff", [26, 26], 0.78);
+        // the visor's top is painted too: twill and three rows of topstitching that follow its outline (uv = x -0.13..0.13, z 0..0.23)
+        const BS = 1024;
+        const bc = canvas(BS, BS);
+        {
+          const g = bc.g;
+          const P = (x: number, z: number): [number, number] => [((x + 0.13) / 0.26) * BS, (1 - z / 0.23) * BS];
+          g.fillStyle = "#f6196a";
+          g.fillRect(0, 0, BS, BS);
+          g.strokeStyle = "rgba(120,20,60,0.28)";
+          g.lineWidth = 2;
+          for (let i = -BS; i < 2 * BS; i += 8) {
+            g.beginPath();
+            g.moveTo(i, 0);
+            g.lineTo(i + BS, BS);
+            g.stroke();
+          }
+          g.strokeStyle = "rgba(255,225,235,0.95)";
+          g.lineWidth = 3.2;
+          g.setLineDash([9, 7]);
+          for (const k of [0.95, 0.88, 0.81]) {
+            const m = (x: number, z: number) => P(x * k, z0 + (z - z0) * k);
+            g.beginPath();
+            g.moveTo(...m(-x0, z0));
+            g.bezierCurveTo(...m(-0.125, 0.15), ...m(-0.065, 0.222), ...m(0, 0.222));
+            g.bezierCurveTo(...m(0.065, 0.222), ...m(0.125, 0.15), ...m(x0, z0));
+            g.stroke();
+          }
+        }
+        topMat.map = tex(bc.c);
         topMat.normalScale.set(1.2, 1.2);
         topMat.side = THREE.DoubleSide;
         const underMat = std("#c4124f", 0.85);
