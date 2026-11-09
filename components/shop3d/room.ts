@@ -517,6 +517,39 @@ export function buildRoom(scene: THREE.Scene): Room {
     geo.rotateX(-Math.PI / 2);
     geo.translate(0, bevel, 0);
     geo.computeVertexNormals();
+    // three material groups: 0 = front (top), 1 = the rim, 2 = the back (its uv is mirrored so a print reads the right way round from behind)
+    {
+      const P = geo.attributes.position;
+      const N = geo.attributes.normal;
+      const U = geo.attributes.uv;
+      const tri: number[][] = [[], [], []];
+      for (let t = 0; t < P.count / 3; t++) {
+        const ny = (N.getY(t * 3) + N.getY(t * 3 + 1) + N.getY(t * 3 + 2)) / 3;
+        tri[ny > 0.85 ? 0 : ny < -0.85 ? 2 : 1].push(t);
+      }
+      const arr = (a: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) => new Float32Array(a.count * a.itemSize);
+      const np = arr(P);
+      const nn = arr(N);
+      const nu = arr(U);
+      let o = 0;
+      geo.clearGroups();
+      tri.forEach((list, gi) => {
+        const start = o * 3;
+        for (const t of list) {
+          for (let k = 0; k < 3; k++) {
+            const i = t * 3 + k;
+            np.set([P.getX(i), P.getY(i), P.getZ(i)], o * 9 + k * 3);
+            nn.set([N.getX(i), N.getY(i), N.getZ(i)], o * 9 + k * 3);
+            nu.set([gi === 2 ? 1 - U.getX(i) : U.getX(i), U.getY(i)], o * 6 + k * 2);
+          }
+          o++;
+        }
+        geo.addGroup(start, list.length * 3, gi);
+      });
+      geo.setAttribute("position", new THREE.BufferAttribute(np, 3));
+      geo.setAttribute("normal", new THREE.BufferAttribute(nn, 3));
+      geo.setAttribute("uv", new THREE.BufferAttribute(nu, 2));
+    }
     return geo;
   };
 
@@ -1137,46 +1170,75 @@ export function buildRoom(scene: THREE.Scene): Room {
         t.repeat.set(9, 9);
         return t;
       })();
-      // the crown's pattern is painted, not modelled: twill, six seams with topstitching, four eyelets. u runs round the crown (the front is u = 0.25), v from the rim (0) up to the button (1)
-      const crownTex = (() => {
-        const W = 1024;
-        const H = 512;
-        const { c, g } = canvas(W, H);
+      // the crown's pattern is painted, not modelled: twill, six seams with topstitching, four eyelets and the embroidered mark.
+      // u runs round the crown (the front panel is centred on u = 0.25, the seams sit half a panel to each side), v from the rim (0) up to the button (1)
+      const CW = 2048;
+      const CH = 1024;
+      const crownC = canvas(CW, CH);
+      const drawCrown = () => {
+        const g = crownC.g;
+        g.clearRect(0, 0, CW, CH);
         g.fillStyle = "#f6196a";
-        g.fillRect(0, 0, W, H);
+        g.fillRect(0, 0, CW, CH);
         g.strokeStyle = "rgba(120,20,60,0.28)";
         g.lineWidth = 2;
-        for (let i = -H; i < W + H; i += 7) {
+        for (let i = -CH; i < CW + CH; i += 9) {
           g.beginPath();
           g.moveTo(i, 0);
-          g.lineTo(i + H, H);
+          g.lineTo(i + CH, CH);
           g.stroke();
         }
         for (let k = 0; k < 6; k++) {
-          const x = (0.25 + k / 6) * W;
+          const x = (0.25 + (k + 0.5) / 6) * CW;
           g.fillStyle = "rgba(150,10,60,0.55)";
-          g.fillRect(x - 3, 0, 6, H);
+          g.fillRect(x - 5, 0, 10, CH);
           g.fillStyle = "rgba(255,225,235,0.9)";
-          for (const d of [-13, 13]) {
-            for (let y = 0; y < H; y += 12) g.fillRect(x + d - 1.5, y, 3, 7);
-          }
+          for (const d of [-22, 22]) for (let y = 0; y < CH; y += 20) g.fillRect(x + d - 2.5, y, 5, 12);
         }
-        for (const th of [Math.PI / 2, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (3 * Math.PI) / 2]) {
-          const x = (0.25 + th / (2 * Math.PI)) * W;
-          const y = (1 - 0.605) * H;
+        for (const th of [Math.PI / 3, (2 * Math.PI) / 3, (4 * Math.PI) / 3, (5 * Math.PI) / 3]) {
+          const x = (0.25 + th / (2 * Math.PI)) * CW;
+          const y = (1 - 0.605) * CH;
           g.fillStyle = "#a80f47";
           g.beginPath();
-          g.ellipse(x, y, 11, 11, 0, 0, 7);
+          g.ellipse(x, y, 20, 20, 0, 0, 7);
           g.fill();
           g.fillStyle = "#3a0518";
           g.beginPath();
-          g.ellipse(x, y, 4, 4, 0, 0, 7);
+          g.ellipse(x, y, 7, 7, 0, 0, 7);
           g.fill();
         }
-        const t = tex(c);
-        t.wrapS = THREE.RepeatWrapping;
-        return t;
-      })();
+        // the front mark: satin-stitch letters with a raised, darker outline (drawn 2:1 stretched because the crown's uv is)
+        const mw = 0.098 / 0.63 * CW;
+        const mh = 0.0428 / 0.0977 * (CH / (Math.PI / 2));
+        const mk = canvas(512, 224);
+        const m = mk.g;
+        m.textAlign = "center";
+        m.textBaseline = "middle";
+        m.font = '900 150px "Pretendard Variable", "Arial Black", sans-serif';
+        m.lineJoin = "round";
+        m.lineWidth = 14;
+        m.strokeStyle = "#9c0f45";
+        m.strokeText("ROOMi", 256, 112);
+        m.fillStyle = "#fff3f7";
+        m.fillText("ROOMi", 256, 112);
+        m.globalCompositeOperation = "source-atop"; // the thread lines stay inside the letters
+        for (let i = -224; i < 512; i += 5) {
+          m.strokeStyle = (i / 5) % 2 === 0 ? "rgba(255,255,255,0)" : "rgba(150,150,170,0.38)";
+          m.lineWidth = 2;
+          m.beginPath();
+          m.moveTo(i, 224);
+          m.lineTo(i + 224, 0);
+          m.stroke();
+        }
+        g.drawImage(mk.c, 0.25 * CW - mw / 2, (1 - 0.29) * CH - mh / 2, mw, mh);
+      };
+      drawCrown();
+      const crownTex = tex(crownC.c);
+      crownTex.wrapS = THREE.RepeatWrapping;
+      document.fonts?.ready.then(() => {
+        drawCrown();
+        crownTex.needsUpdate = true;
+      });
       const capMat = fabric("#ffffff", [14, 14], 0.78);
       capMat.map = crownTex;
       capMat.normalScale.set(1.25, 1.25);
@@ -1192,7 +1254,7 @@ export function buildRoom(scene: THREE.Scene): Room {
           const z = cp.getZ(i);
           const lat = Math.hypot(x, z) / R;
           const th = Math.atan2(x, z);
-          const bulge = Math.pow(Math.abs(Math.sin(3 * th)), 0.5);
+          const bulge = Math.pow(Math.abs(Math.cos(3 * th)), 0.5);
           const f = 1 - 0.008 * (1 - bulge) * Math.min(1, lat * 2.2);
           cp.setXYZ(i, x * f, y * (0.5 + 0.5 * f), z * f);
         }
@@ -1204,28 +1266,33 @@ export function buildRoom(scene: THREE.Scene): Room {
       part(add(new THREE.CylinderGeometry(R * 0.93, R * 0.93, 0.024, 56, 1, true), track(new THREE.MeshStandardMaterial({ color: "#f3e9df", roughness: 0.9, side: THREE.DoubleSide })), 0, 0.011, 0, cg, false));
       // button
       part(add(new THREE.SphereGeometry(0.0125, 16, 10), capMat, 0, R * SY + 0.0015, 0, cg, false)).scale.y = 0.7;
-      // brim: its back edge hugs the crown's bottom circle, the front is a rounded visor, bent down at the sides
+      // brim: its back edge is sunk into the crown's front wall (so it cannot come loose), then it flares forward into a rounded visor
+      // that curves down at the sides; the drop grows with the distance from the crown so the join stays put.
       {
-        const XE = 0.108;
-        const yb = (x: number) => Math.sqrt(Math.max(R * R - x * x, 0)) - 0.014;
+        const RB = 0.106;
+        const A = 1.31; // the back edge runs along the front 75 degrees either side
+        const x0 = RB * Math.sin(A);
+        const z0 = RB * Math.cos(A);
         const sh = new THREE.Shape();
-        sh.moveTo(-XE, yb(-XE));
-        sh.bezierCurveTo(-0.118, 0.175, -0.06, 0.226, 0, 0.226);
-        sh.bezierCurveTo(0.06, 0.226, 0.118, 0.175, XE, yb(XE));
+        sh.moveTo(-x0, z0);
+        sh.bezierCurveTo(-0.125, 0.15, -0.065, 0.222, 0, 0.222);
+        sh.bezierCurveTo(0.065, 0.222, 0.125, 0.15, x0, z0);
         for (let i = 1; i <= 24; i++) {
-          const x = XE - (i / 24) * 2 * XE;
-          sh.lineTo(x, yb(x));
+          const a = A - (i / 24) * 2 * A;
+          sh.lineTo(RB * Math.sin(a), RB * Math.cos(a));
         }
-        const bend = (x: number) => 1.3 * x * x;
+        const zb = (x: number) => Math.sqrt(Math.max(RB * RB - x * x, 0));
+        const drop = (x: number, z: number) => 1.3 * x * x * Math.min(1, Math.max(0, (z - zb(x)) / 0.05));
         const place = new THREE.Matrix4().makeTranslation(0, 0.012, 0).multiply(new THREE.Matrix4().makeRotationX(0.07));
-        // flat shape (x, y) -> world (x, bent height, y): a top sheet, a darker underside sheet 3.5mm below, and a rounded edge between
         const sheet = (dy: number) => {
           const gm = new THREE.ShapeGeometry(sh, 32);
           const pp = gm.attributes.position;
+          const uvs = gm.attributes.uv;
           for (let i = 0; i < pp.count; i++) {
             const x = pp.getX(i);
             const z = pp.getY(i);
-            pp.setXYZ(i, x, -bend(x) + dy, z);
+            uvs.setXY(i, x * 5, z * 5);
+            pp.setXYZ(i, x, -drop(x, z) + dy, z);
           }
           gm.computeVertexNormals();
           gm.applyMatrix4(place);
@@ -1239,74 +1306,13 @@ export function buildRoom(scene: THREE.Scene): Room {
         underMat.side = THREE.DoubleSide;
         part(add(sheet(0), topMat, 0, 0, 0, cg));
         part(add(sheet(-0.0035), underMat, 0, 0, 0, cg, false));
-        const edge = sh.getPoints(60).map((p) => new THREE.Vector3(p.x, -bend(p.x) - 0.00175, p.y).applyMatrix4(place));
-        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge, true), 200, 0.0034, 8, true), seamMat, 0, 0, 0, cg, false));
+        // the rolled edge only along the visible front outline
+        const outline = [...new THREE.CubicBezierCurve(new THREE.Vector2(-x0, z0), new THREE.Vector2(-0.125, 0.15), new THREE.Vector2(-0.065, 0.222), new THREE.Vector2(0, 0.222)).getPoints(30), ...new THREE.CubicBezierCurve(new THREE.Vector2(0, 0.222), new THREE.Vector2(0.065, 0.222), new THREE.Vector2(0.125, 0.15), new THREE.Vector2(x0, z0)).getPoints(30).slice(1)];
+        const edge = outline.map((q) => new THREE.Vector3(q.x, -drop(q.x, q.y) - 0.00175, q.y).applyMatrix4(place));
+        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge), 160, 0.0034, 8, false), seamMat, 0, 0, 0, cg, false));
       }
       // back strap: a thin curved band that follows the crown (it used to be a flat box whose ends hung in the air)
       part(add(new THREE.CylinderGeometry(R * 0.962 * 1.004, R * 0.962 * 1.004, 0.016, 24, 1, true, Math.PI - 0.62, 1.24), std("#e0145f", 0.8), 0, 0.03, 0, cg, false)).material.side = THREE.DoubleSide;
-      // front mark on the crown, following its slope: satin-stitch embroidery (diagonal thread, raised outline)
-      {
-        const cv = canvas(512, 224);
-        const hv = canvas(512, 224);
-        const draw = () => {
-          const g1 = cv.g;
-          const g2 = hv.g;
-          g1.clearRect(0, 0, 512, 224);
-          g2.fillStyle = "#000";
-          g2.fillRect(0, 0, 512, 224);
-          const txt = (ctx: CanvasRenderingContext2D, stroke: boolean) => {
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.font = '900 150px "Pretendard Variable", "Arial Black", sans-serif';
-            if (stroke) {
-              ctx.lineJoin = "round";
-              ctx.lineWidth = 12;
-              ctx.strokeText("ROOMi", 256, 112);
-            } else ctx.fillText("ROOMi", 256, 112);
-          };
-          g1.save();
-          g1.strokeStyle = "#c4124f";
-          txt(g1, true);
-          g1.fillStyle = "#fff3f7";
-          txt(g1, false);
-          g1.globalCompositeOperation = "source-atop";
-          for (let i = -224; i < 512; i += 5) {
-            g1.strokeStyle = (i / 5) % 2 === 0 ? "rgba(255,255,255,0.0)" : "rgba(150,150,170,0.38)";
-            g1.lineWidth = 2;
-            g1.beginPath();
-            g1.moveTo(i, 224);
-            g1.lineTo(i + 224, 0);
-            g1.stroke();
-          }
-          g1.restore();
-          g2.save();
-          g2.fillStyle = "#fff";
-          g2.strokeStyle = "#888";
-          txt(g2, true);
-          txt(g2, false);
-          g2.restore();
-        };
-        draw();
-        const tt = tex(cv.c);
-        const bump = track(new THREE.CanvasTexture(hv.c));
-        document.fonts?.ready.then(() => {
-          draw();
-          tt.needsUpdate = true;
-          bump.needsUpdate = true;
-        });
-        const ph = 1.12;
-        const mark = add(
-          new THREE.PlaneGeometry(0.098, 0.0428),
-          track(new THREE.MeshStandardMaterial({ map: tt, bumpMap: bump, bumpScale: 2.2, roughness: 0.55, transparent: true, alphaTest: 0.04, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })),
-          0,
-          R * SY * Math.cos(ph),
-          R * Math.sin(ph) * 1.022,
-          cg,
-          false,
-        );
-        mark.rotation.x = -(Math.PI / 2 - ph) * 0.96;
-        mark.userData.part = "cap";
-      }
       hitBox(0.34, 0.2, 0.34, 0, 0.05, 0.05, cg, "cap");
       g.add(cg);
     }
@@ -1705,7 +1711,24 @@ export function buildRoom(scene: THREE.Scene): Room {
         c.fillText("MINI DISC", 16, 26);
       }, 0.18);
       const acrylic = track(new THREE.MeshPhysicalMaterial({ map: front.map, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.06, envMap: scene.environment, envMapIntensity: 1.2 }));
-      const slab = new THREE.Mesh(roundedSlab(0.13, 0.13, 0.0075, 0.02), acrylic);
+      // the back is its own print: a plain tinted acrylic face with a small mark, so nothing shows through from the front
+      const backM = paint(256, 256, (c) => {
+        const gr = c.createLinearGradient(0, 0, 256, 256);
+        gr.addColorStop(0, accent);
+        gr.addColorStop(1, col);
+        c.fillStyle = gr;
+        c.fillRect(0, 0, 256, 256);
+        c.fillStyle = "rgba(255,255,255,0.2)";
+        for (let q = 0; q < 256; q += 16) for (let r = 0; r < 256; r += 16) c.fillRect(q + 6, r + 6, 3, 3);
+        c.fillStyle = "rgba(255,255,255,0.9)";
+        c.font = '900 26px "Pretendard Variable", Arial Black, sans-serif';
+        c.textAlign = "center";
+        c.fillText("ROOMi", 128, 138);
+        c.font = '600 12px Arial, sans-serif';
+        c.fillText("MINI DISC KEYRING", 128, 158);
+      }, 0.2);
+      const sideM = std(col, 0.3);
+      const slab = new THREE.Mesh(roundedSlab(0.13, 0.13, 0.0075, 0.02), [acrylic, sideM, backM]);
       slab.castShadow = true;
       kg.add(slab);
       tag(slab, "mini-cd-keyring");
@@ -1862,9 +1885,11 @@ export function buildRoom(scene: THREE.Scene): Room {
         nrmT.needsUpdate = true;
       });
       const pm = track(new THREE.MeshStandardMaterial({ map: mapT, normalMap: nrmT, normalScale: new THREE.Vector2(1.1, 1.1), roughness: 0.78 }));
-      // the slab has two material groups: caps (top/bottom) take the embroidery, the rim takes plain thread
+      // the slab has three material groups: the front takes the embroidery, the rim plain thread, the back felt
       const rimMat = track(new THREE.MeshStandardMaterial({ color: edge, roughness: 0.85 }));
-      const patch = new THREE.Mesh(roundedSlab(0.12, 0.09, 0.0075, 0.014, 0.0016), [pm, rimMat]);
+      // the back: plain iron-on felt, no print
+      const felt = fabric("#e9dfd0", [10, 10], 0.97);
+      const patch = new THREE.Mesh(roundedSlab(0.12, 0.09, 0.0075, 0.014, 0.0016), [pm, rimMat, felt]);
       patch.position.set(0.02 + i * 0.14, 0.4975, 0.34 - (i % 2) * 0.05);
       patch.castShadow = true;
       patch.receiveShadow = true;
