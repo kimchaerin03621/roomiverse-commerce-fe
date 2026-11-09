@@ -9,11 +9,11 @@ import { productById, type Product } from "@/content/products";
 import { useCart } from "@/lib/store";
 import ContainerGate from "./ContainerGate";
 import ProductViewer from "./ProductViewer";
-import { buildRoom, VIEWS, VIEWS_PORTRAIT, type Mood } from "./room";
+import { buildRoom, VIEWS, VIEWS_PORTRAIT, MOODS, MOOD_LABEL, type Mood } from "./room";
 import styles from "./ShopScene.module.css";
 
 // Clicking either stage light steps through these: off -> soft -> vivid -> rave -> off.
-const ORDER: Mood[] = ["off", "soft", "vivid", "rave"];
+const ORDER: Mood[] = MOODS;
 
 const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
 
@@ -32,15 +32,16 @@ export default function ShopScene() {
   const makeModel = useCallback((id: string) => api.current?.cloneProduct(id) ?? null, []);
   const { add } = useCart();
   const router = useRouter();
-  const [mood, setMood] = useState<Mood>("soft");
+  const [mood, setMood] = useState<Mood>("house");
   const [spin, setSpin] = useState(true);
-  const moodRef = useRef<Mood>("soft");
+  const moodRef = useRef<Mood>("house");
   const spinRef = useRef(true);
   const [product, setProduct] = useState<Product | null>(null);
   const [option, setOption] = useState("");
   const [added, setAdded] = useState(false);
   const panelOpen = useRef(false);
   const tip = useRef<HTMLDivElement>(null);
+  const bloomEl = useRef<HTMLDivElement>(null);
   // Loading gate: container doors stay shut until the textures are in, then swing open.
   const [ready, setReady] = useState(false);
   const [gone, setGone] = useState(false);
@@ -156,7 +157,7 @@ export default function ShopScene() {
     const pickMeshes = room.picks.map((p) => p.object);
     const idOf = (o: THREE.Object3D) => room.picks.find((p) => p.object === o)?.id ?? null;
 
-    let exposure = room.setMood("soft");
+    let exposure = room.setMood("house");
     renderer.toneMappingExposure = exposure;
 
     const size = () => {
@@ -179,10 +180,15 @@ export default function ShopScene() {
     let hover: string | null = null;
     let selected: string | null = null;
     // The stage lights and the disco ball are controls, not products: they never open the product panel.
+    // "MOOD / NONE" in daylight, "MOOD / House Party" etc. in a party scene
+    const moodTip = () => `Mood / ${moodRef.current === "day" ? "None" : MOOD_LABEL[moodRef.current]}`;
     const activate = (id: string) => {
-      if (id === "stage-light") {
+      if (id === "stage-light-0" || id === "stage-light-1") {
+        room.toggleStage(id === "stage-light-0" ? 0 : 1);
+      } else if (id === "mood") {
         moodRef.current = ORDER[(ORDER.indexOf(moodRef.current) + 1) % ORDER.length];
         setMood(moodRef.current);
+        if (tip.current) tip.current.textContent = moodTip(); // the name under the pointer follows the click
       } else if (id === "lamp") {
         room.toggleLamps();
       } else if (id === "disco-ball") {
@@ -229,9 +235,9 @@ export default function ShopScene() {
         // A small tag follows the pointer: "Change" over the stage lights and the disco ball, name and price over products.
         const t = tip.current;
         if (t) {
-          const control = hover === "stage-light" || hover === "disco-ball" || hover === "lamp";
+          const control = hover === "stage-light-0" || hover === "stage-light-1" || hover === "mood" || hover === "disco-ball" || hover === "lamp";
           const p = hover && !control && hover !== "laptop" ? productById(hover) : null;
-          const text = hover === "lamp" ? "Lamp" : control ? "Change" : hover === "laptop" ? "Shop all" : p ? `${p.name} · ${won(p.price)}` : "";
+          const text = hover === "lamp" ? "Lamp" : hover === "stage-light-0" || hover === "stage-light-1" ? "Light on/off" : hover === "mood" ? moodTip() : control ? "Change" : hover === "laptop" ? "Shop all" : p ? `${p.name} · ${won(p.price)}` : "";
           if (t.textContent !== text && text) t.textContent = text;
           t.style.opacity = text ? "1" : "0";
           t.style.transform = `translate(${e.clientX + 16}px, ${e.clientY + 18}px)`;
@@ -321,6 +327,8 @@ export default function ShopScene() {
     let n = 0;
     let justUp = false;
     const apply = () => {
+      // the glow layer is the first thing to go when a machine struggles
+      if (bloomEl.current) bloomEl.current.style.display = step === 0 ? "" : "none";
       renderer.setPixelRatio(baseRatio * STEPS[step]);
       size();
       spent = 0;
@@ -430,6 +438,7 @@ export default function ShopScene() {
       <div ref={tip} className={styles.tip} aria-hidden="true">
         Change
       </div>
+      <div ref={bloomEl} className={styles.bloom} aria-hidden="true" />
       <div className={styles.grain} aria-hidden="true" />
       <div className={styles.vignette} aria-hidden="true" />
 

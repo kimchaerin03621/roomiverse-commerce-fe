@@ -22,7 +22,18 @@ export const Z1 = 3.6; // open front (behind the camera)
 export const H = 3.3;
 
 /** Stage-light modes, cycled by clicking the lights: off -> soft -> vivid -> rave -> off. */
-export type Mood = "off" | "soft" | "vivid" | "rave";
+/** Plain daylight, then the six party scenes of the site (see content/parties.ts). */
+export type Mood = "day" | "house" | "listening" | "dayparty" | "themed" | "rave" | "after";
+export const MOODS: Mood[] = ["day", "house", "listening", "dayparty", "themed", "rave", "after"];
+export const MOOD_LABEL: Record<Mood, string> = {
+  day: "Daylight",
+  house: "House Party",
+  listening: "Listening Party",
+  dayparty: "Day Party",
+  themed: "Themed Party",
+  rave: "Rave Party",
+  after: "After Party",
+};
 export type Pick = { id: string; object: THREE.Object3D };
 type Vec3 = [number, number, number];
 export const VIEWS: Record<"center" | "left" | "right", { pos: Vec3; look: Vec3 }> = {
@@ -49,6 +60,8 @@ type Room = {
   setHover: (id: string | null) => void;
   /** Turns the room lamps on or off. */
   toggleLamps: () => void;
+  /** Switches one ceiling spotlight (0 = left, 1 = right) on or off. */
+  toggleStage: (i: number) => void;
   /** An independent copy of one product (materials cloned, cloth laid flat) for the zoom viewer, centred on its own origin. */
   cloneProduct: (id: string) => THREE.Group | null;
   /** Keeps only one product (cloth laid flat) at the world origin and returns its bounds; for product shots. */
@@ -63,12 +76,21 @@ function canvas(w: number, h: number) {
 }
 
 
-/** Light weights of the baked groups per mood: sun/sky bounce, warm lamps, neon + LED strip, stage spots. */
-const LM_MOOD: Record<Mood, { base: number; warm: number; party: number; stage: number; lamp: number; neon: number }> = {
-  off: { base: 1.0, warm: 0.15, party: 0.15, stage: 0, lamp: 0.35, neon: 0.55 },
-  soft: { base: 0.38, warm: 1.0, party: 0.6, stage: 0.2, lamp: 1.0, neon: 0.85 },
-  vivid: { base: 0.08, warm: 0.7, party: 1.2, stage: 1.0, lamp: 0.8, neon: 1.0 },
-  rave: { base: 0.03, warm: 0.15, party: 1.4, stage: 0.9, lamp: 0.25, neon: 1.0 },
+/**
+ * Light weights of the baked groups per mood: sun/sky bounce, warm lamps, neon + LED strip, stage spots.
+ * tp / ts re-colour the baked neon-strip and stage-spot light (tm = how far toward the tint, 0 keeps the baked pink and purple),
+ * so every scene gets its own colour from the same four images (no extra download).
+ */
+type LmMood = { base: number; warm: number; party: number; stage: number; lamp: number; neon: number; tp: [number, number, number]; ts: [number, number, number]; tm: number };
+const WHITE: [number, number, number] = [1, 1, 1];
+const LM_MOOD: Record<Mood, LmMood> = {
+  day: { base: 1.0, warm: 0.15, party: 0.15, stage: 0.1, lamp: 0.35, neon: 0.55, tp: WHITE, ts: WHITE, tm: 0 },
+  house: { base: 0.08, warm: 0.7, party: 1.2, stage: 1.0, lamp: 0.8, neon: 1.0, tp: WHITE, ts: WHITE, tm: 0 },
+  listening: { base: 0.2, warm: 1.0, party: 0.3, stage: 0.45, lamp: 1.0, neon: 0.6, tp: [1, 0.62, 0.3], ts: [1, 0.68, 0.38], tm: 0.85 },
+  dayparty: { base: 0.62, warm: 0.45, party: 0.3, stage: 0.5, lamp: 0.5, neon: 0.7, tp: [1, 0.85, 0.45], ts: [1, 0.88, 0.55], tm: 0.85 },
+  themed: { base: 0.06, warm: 0.35, party: 1.0, stage: 1.0, lamp: 0.5, neon: 1.0, tp: [1, 0.5, 0.12], ts: [0.2, 1, 0.65], tm: 0.8 },
+  rave: { base: 0.03, warm: 0.15, party: 1.4, stage: 0.9, lamp: 0.25, neon: 1.0, tp: [0.55, 0.3, 1], ts: [0.3, 0.45, 1], tm: 0.65 },
+  after: { base: 0.05, warm: 0.8, party: 0.5, stage: 0.3, lamp: 0.9, neon: 0.8, tp: [1, 0.35, 0.5], ts: [1, 0.5, 0.36], tm: 0.7 },
 };
 const LM_GAIN = 1.0;
 
@@ -95,8 +117,11 @@ function pickFramePhotos(): [string, string, string, string] {
 }
 
 function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => void }>(o: T) => T, env: () => THREE.Texture | null) {
-  const weights = { ...LM_MOOD.off };
+  const weights = { ...LM_MOOD.day };
   const uW = { value: new THREE.Vector4(1, 0, 0, 0) };
+  const uTP = { value: new THREE.Vector3(1, 1, 1) };
+  const uTS = { value: new THREE.Vector3(1, 1, 1) };
+  const uTM = { value: 0 };
   const emitters: { mat: THREE.MeshBasicMaterial; base: THREE.Color; kind: "lamp" | "neon" }[] = [];
   const texLoader = new THREE.TextureLoader();
   const lmTex = (name: string) => {
@@ -126,15 +151,21 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
       sh.uniforms.lmParty = { value: lms.party };
       sh.uniforms.lmStage = { value: lms.stage };
       sh.uniforms.lmW = uW;
+      sh.uniforms.lmTP = uTP;
+      sh.uniforms.lmTS = uTS;
+      sh.uniforms.lmTM = uTM;
       sh.uniforms.lmS = uScale;
       sh.fragmentShader = sh.fragmentShader
-        .replace("#include <lightmap_pars_fragment>", "#include <lightmap_pars_fragment>\nuniform sampler2D lmWarm;\nuniform sampler2D lmParty;\nuniform sampler2D lmStage;\nuniform vec4 lmW;\nuniform vec4 lmS;")
+        .replace("#include <lightmap_pars_fragment>", "#include <lightmap_pars_fragment>\nuniform sampler2D lmWarm;\nuniform sampler2D lmParty;\nuniform sampler2D lmStage;\nuniform vec4 lmW;\nuniform vec4 lmS;\nuniform vec3 lmTP;\nuniform vec3 lmTS;\nuniform float lmTM;")
         .replace(
           "vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );",
           `vec3 lmA = pow(texture2D( lightMap, vLightMapUv ).rgb, vec3(2.2)) * lmS.x * lmW.x;
           lmA += pow(texture2D( lmWarm, vLightMapUv ).rgb, vec3(2.2)) * lmS.y * lmW.y;
-          lmA += pow(texture2D( lmParty, vLightMapUv ).rgb, vec3(2.2)) * lmS.z * lmW.z;
-          lmA += pow(texture2D( lmStage, vLightMapUv ).rgb, vec3(2.2)) * lmS.w * lmW.w;
+          vec3 lmP = pow(texture2D( lmParty, vLightMapUv ).rgb, vec3(2.2)) * lmS.z;
+          vec3 lmG = pow(texture2D( lmStage, vLightMapUv ).rgb, vec3(2.2)) * lmS.w;
+          lmP = mix(lmP, dot(lmP, vec3(0.299, 0.587, 0.114)) * lmTP * 1.6, lmTM);
+          lmG = mix(lmG, dot(lmG, vec3(0.299, 0.587, 0.114)) * lmTS * 1.6, lmTM);
+          lmA += lmP * lmW.z + lmG * lmW.w;
           vec4 lightMapTexel = vec4(lmA, 1.0);`,
         );
     };
@@ -242,10 +273,10 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
       // A flat plane lying on the wall, not a camera-facing sprite: a sprite is cut off by the wall when seen from the side.
       // Normal blending: an additive pink over the green wall turns grey.
       const gl = new THREE.Mesh(
-        track(new THREE.PlaneGeometry(2.5, 1.0)),
+        track(new THREE.PlaneGeometry(2.9, 1.2)),
         track(new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false, transparent: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })),
       );
-      gl.position.set(0, 2.2, -4.357);
+      gl.position.set(0, 2.22, -4.357);
       gl.renderOrder = 1;
       root.add(gl);
       glow = gl;
@@ -259,6 +290,9 @@ function loadBackModule(scene: THREE.Scene, track: <T extends { dispose: () => v
   let nextFlick = 4;
   const apply = () => {
     uW.value.set(weights.base, weights.warm * lampC, weights.party, weights.stage);
+    uTP.value.set(weights.tp[0], weights.tp[1], weights.tp[2]);
+    uTS.value.set(weights.ts[0], weights.ts[1], weights.ts[2]);
+    uTM.value = weights.tm;
     if (glow) (glow.material as THREE.MeshBasicMaterial).opacity = (0.25 + 0.75 * weights.neon) * flick;
     for (const e of emitters) e.mat.color.copy(e.base).multiplyScalar(e.kind === "lamp" ? (0.4 + 0.9 * weights.lamp) * (0.08 + 0.92 * lampC) * (1 + lampHover * 0.5) : (0.35 + 0.9 * weights.neon) * flick);
   };
@@ -436,6 +470,54 @@ export function buildRoom(scene: THREE.Scene): Room {
     const { c, g } = canvas(w, h);
     draw(g);
     return track(new THREE.MeshStandardMaterial({ map: tex(c), roughness: rough, metalness: metal }));
+  };
+  /** Turns a height drawing (light = high) into a normal map, so stitching and weave catch the light. */
+  const normalFromHeight = (src: HTMLCanvasElement, strength = 2.2) => {
+    const w = src.width;
+    const h = src.height;
+    const d = src.getContext("2d")!.getImageData(0, 0, w, h).data;
+    const out = canvas(w, h);
+    const img = out.g.createImageData(w, h);
+    const H = (x: number, y: number) => d[(((y + h) % h) * w + ((x + w) % w)) * 4] / 255;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = (H(x + 1, y) - H(x - 1, y)) * strength;
+        const dy = (H(x, y + 1) - H(x, y - 1)) * strength;
+        const l = Math.hypot(dx, dy, 1);
+        const i = (y * w + x) * 4;
+        img.data[i] = ((-dx / l) * 0.5 + 0.5) * 255;
+        img.data[i + 1] = ((dy / l) * 0.5 + 0.5) * 255;
+        img.data[i + 2] = ((1 / l) * 0.5 + 0.5) * 255;
+        img.data[i + 3] = 255;
+      }
+    }
+    out.g.putImageData(img, 0, 0);
+    const t = track(new THREE.CanvasTexture(out.c));
+    t.anisotropy = 8;
+    return t;
+  };
+  /** A rounded-rectangle slab (w x d on the ground plane, h tall, bevelled edges), uv spread 0..1 over the top, base sitting on y = 0. */
+  const roundedSlab = (w: number, d: number, h: number, r: number, bevel = 0.0014) => {
+    const sh = new THREE.Shape();
+    const x0 = -w / 2;
+    const y0 = -d / 2;
+    sh.moveTo(x0 + r, y0);
+    sh.lineTo(-x0 - r, y0);
+    sh.quadraticCurveTo(-x0, y0, -x0, y0 + r);
+    sh.lineTo(-x0, -y0 - r);
+    sh.quadraticCurveTo(-x0, -y0, -x0 - r, -y0);
+    sh.lineTo(x0 + r, -y0);
+    sh.quadraticCurveTo(x0, -y0, x0, -y0 - r);
+    sh.lineTo(x0, y0 + r);
+    sh.quadraticCurveTo(x0, y0, x0 + r, y0);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: h - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 10 });
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + w / 2) / w, (pos.getY(i) + d / 2) / d);
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, bevel, 0);
+    geo.computeVertexNormals();
+    return geo;
   };
 
   const rgbOf = (hex: string) => {
@@ -736,21 +818,73 @@ export function buildRoom(scene: THREE.Scene): Room {
   const lensMats: THREE.MeshBasicMaterial[] = [];
   const fixturePos: THREE.Vector3[] = [];
   const fixtureGlow: THREE.Sprite[] = [];
+  const fixtureGroups: THREE.Group[] = [];
+  const beamMats: THREE.ShaderMaterial[] = [];
+  // A visible cone of light from each ceiling spot, so it is obvious the glow comes from there (and that it can be touched).
+  const BEAM_L = 4.2;
+  const coneGeo = track(new THREE.ConeGeometry(0.95, BEAM_L, 28, 1, true));
   for (const [sx, col] of [[-1, "#f71d64"], [1, "#c14ed4"]] as const) {
     const g = new THREE.Group();
     g.position.set(sx * 3.05, 3.0, -3.6);
     scene.add(g);
-    cyl(0.012, 0.012, 0.5, std("#222", 0.5, 0.6), 0, 0.25, 0, g, 8).castShadow = false;
+    {
+      // fixed mount: a rod from the ceiling down to a swivel ball; the can turns about that ball
+      const mount = std("#222", 0.5, 0.6);
+      cyl(0.014, 0.014, 0.3, mount, sx * 3.05, 3.15, -3.6, scene, 8).castShadow = false;
+      add(new THREE.SphereGeometry(0.045, 14, 10), mount, sx * 3.05, 3.0, -3.6, scene, false);
+      cyl(0.07, 0.07, 0.012, mount, sx * 3.05, 3.295, -3.6, scene, 16).castShadow = false;
+    }
     const can = cyl(0.15, 0.17, 0.4, std("#1a1618", 0.4, 0.5), 0, 0, 0, g, 20);
     const lensMat = track(new THREE.MeshBasicMaterial({ color: col }));
     lensMats.push(lensMat);
     const lens = cyl(0.14, 0.14, 0.02, lensMat, 0, -0.21, 0, g, 20);
-    hitBox(0.7, 0.7, 0.7, 0, 0, 0, g, "stage-light");
+    hitBox(0.7, 0.7, 0.7, 0, 0, 0, g, sx < 0 ? "stage-light-0" : "stage-light-1");
     fixtureGlow.push(addGlow(g, 0, -0.1, 0, 1.3));
     fixturePos.push(g.position.clone());
     g.lookAt(0, 0.9, -3.0);
-    g.rotateX(Math.PI / 2);
+    g.rotateX(-Math.PI / 2);
     can.castShadow = lens.castShadow = false;
+    {
+      const bm = track(
+        new THREE.ShaderMaterial({
+          uniforms: { uColor: { value: new THREE.Color(col) }, uI: { value: 0 } },
+          vertexShader: `
+            varying float vFade;
+            varying vec3 vN;
+            varying vec3 vP;
+            void main() {
+              vFade = uv.y;                       // 1 at the lamp, 0 at the far end
+              vN = normalize(normalMatrix * normal);
+              vec4 mv = modelViewMatrix * vec4(position, 1.0);
+              vP = -mv.xyz;
+              gl_Position = projectionMatrix * mv;
+            }`,
+          fragmentShader: `
+            uniform vec3 uColor;
+            uniform float uI;
+            varying float vFade;
+            varying vec3 vN;
+            varying vec3 vP;
+            void main() {
+              float edge = pow(abs(dot(normalize(vN), normalize(vP))), 0.9);   // soft sides
+              float a = pow(vFade, 1.1) * edge * uI * 1.9;
+              gl_FragColor = linearToOutputTexel(vec4(uColor, a));
+            }`,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          side: THREE.BackSide, // only the far inside wall of the cone: half the pixels of drawing both faces
+          toneMapped: false,
+        }),
+      );
+      const beam = new THREE.Mesh(coneGeo, bm);
+      beam.position.set(0, -0.22 - BEAM_L / 2, 0);
+      beam.frustumCulled = false;
+      beam.renderOrder = 1;
+      g.add(beam);
+      beamMats.push(bm);
+      fixtureGroups.push(g);
+    }
     const spot = new THREE.SpotLight(col, 0, 12, 0.5, 0.65, 1.6);
     spot.position.copy(g.position);
     spot.target.position.set(0, 0.8, -3.0);
@@ -772,6 +906,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     ball,
   );
   hitBox(0.9, 0.9, 0.9, 0, 0, 0, ball, "disco-ball");
+  hitBox(1.8, 0.75, 0.25, 0, 2.22, -4.2, scene, "mood"); // the neon sign: click to change the light mood
   const ballGlow = addGlow(ball, 0, 0, -0.25, 1.5);
   (ballGlow.material as THREE.SpriteMaterial).depthTest = true; // halo stays behind the ball
   scene.add(ball);
@@ -985,12 +1120,49 @@ export function buildRoom(scene: THREE.Scene): Room {
       cg.rotation.set(-0.06, 0.5, 0.03);
       const R = 0.112;
       const SY = 0.84;
-      const capMat = fabric("#f71d64", [10, 10], 0.82);
+      const twillTex = (() => {
+        const { c, g } = canvas(128, 128);
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, 128, 128);
+        g.strokeStyle = "rgba(120,20,60,0.32)";
+        g.lineWidth = 2;
+        for (let i = -128; i < 256; i += 6) {
+          g.beginPath();
+          g.moveTo(i, 0);
+          g.lineTo(i + 128, 128);
+          g.stroke();
+        }
+        const t = tex(c);
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(9, 9);
+        return t;
+      })();
+      const capMat = fabric("#f6196a", [14, 14], 0.78);
+      capMat.map = twillTex;
+      capMat.normalScale.set(1.25, 1.25);
       const seamMat = std("#d3135a", 0.85);
       const light = std("#ffd9e6", 0.8);
       const part = <T extends THREE.Object3D>(o: T) => tag(o, "cap");
-      // crown
-      part(add(new THREE.SphereGeometry(R, 56, 28, 0, Math.PI * 2, 0, Math.PI / 2), capMat, 0, 0, 0, cg)).scale.set(1, SY, 1);
+      // crown: each of the six panels bulges a little, the seams sink in between them
+      const crownGeo = new THREE.SphereGeometry(R, 72, 36, 0, Math.PI * 2, 0, Math.PI / 2);
+      {
+        const cp = crownGeo.attributes.position;
+        for (let i = 0; i < cp.count; i++) {
+          const x = cp.getX(i);
+          const y = cp.getY(i);
+          const z = cp.getZ(i);
+          const lat = Math.hypot(x, z) / R;
+          const th = Math.atan2(x, z);
+          const bulge = Math.pow(Math.abs(Math.sin(3 * th)), 0.5);
+          const f = 1 - 0.008 * (1 - bulge) * Math.min(1, lat * 2.2);
+          cp.setXYZ(i, x * f, y * (0.5 + 0.5 * f), z * f);
+        }
+        crownGeo.computeVertexNormals();
+      }
+      part(add(crownGeo, capMat, 0, 0, 0, cg)).scale.set(1, SY, 1);
+      // lining and sweatband, seen from below and where the brim lifts
+      add(new THREE.SphereGeometry(R * 0.97, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), track(new THREE.MeshStandardMaterial({ color: "#8c0f3a", roughness: 0.95, side: THREE.BackSide })), 0, -0.002, 0, cg, false).scale.set(1, SY, 1);
+      part(add(new THREE.CylinderGeometry(R * 0.975, R * 0.975, 0.024, 56, 1, true), track(new THREE.MeshStandardMaterial({ color: "#f3e9df", roughness: 0.9, side: THREE.DoubleSide })), 0, 0.011, 0, cg, false));
       // panel seams (meridians) with a darker, raised thread and a topstitch beside each
       for (let k = 0; k < 6; k++) {
         const th = (k * Math.PI) / 3;
@@ -1050,14 +1222,16 @@ export function buildRoom(scene: THREE.Scene): Room {
           gm.applyMatrix4(place);
           return gm;
         };
-        const topMat = fabric("#f71d64", [4, 4], 0.78);
+        const topMat = fabric("#f6196a", [6, 6], 0.78);
+        topMat.map = twillTex;
+        topMat.normalScale.set(1.2, 1.2);
         topMat.side = THREE.DoubleSide;
         const underMat = std("#c4124f", 0.85);
         underMat.side = THREE.DoubleSide;
         part(add(sheet(0), topMat, 0, 0, 0, cg));
         part(add(sheet(-0.0035), underMat, 0, 0, 0, cg, false));
         const edge = sh.getPoints(60).map((p) => new THREE.Vector3(p.x, -bend(p.x) - 0.00175, p.y).applyMatrix4(place));
-        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge, true), 160, 0.0021, 6, true), seamMat, 0, 0, 0, cg, false));
+        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge, true), 200, 0.0034, 8, true), seamMat, 0, 0, 0, cg, false));
         const front = [...c1.getPoints(24), ...c2.getPoints(24).slice(1)].filter((p) => p.y > 0.13);
         for (const k of [0.95, 0.88, 0.81]) {
           const v = front.map((p) => {
@@ -1074,27 +1248,60 @@ export function buildRoom(scene: THREE.Scene): Room {
         strap.rotation.x = 0.12;
         part(add(new THREE.BoxGeometry(0.022, 0.02, 0.008), brass(), 0.012, 0.028, -R * 0.99, cg, false));
       }
-      // small front mark on the crown, following its slope
+      // front mark on the crown, following its slope: satin-stitch embroidery (diagonal thread, raised outline)
       {
-        const { c, g: cx } = canvas(256, 112);
-        const paint = () => {
-          cx.clearRect(0, 0, 256, 112);
-          cx.fillStyle = "#fff3f7";
-          cx.textAlign = "center";
-          cx.textBaseline = "middle";
-          cx.font = '900 70px "Pretendard Variable", "Arial Black", sans-serif';
-          cx.fillText("ROOMi", 128, 56);
+        const cv = canvas(512, 224);
+        const hv = canvas(512, 224);
+        const draw = () => {
+          const g1 = cv.g;
+          const g2 = hv.g;
+          g1.clearRect(0, 0, 512, 224);
+          g2.fillStyle = "#000";
+          g2.fillRect(0, 0, 512, 224);
+          const txt = (ctx: CanvasRenderingContext2D, stroke: boolean) => {
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = '900 150px "Pretendard Variable", "Arial Black", sans-serif';
+            if (stroke) {
+              ctx.lineJoin = "round";
+              ctx.lineWidth = 12;
+              ctx.strokeText("ROOMi", 256, 112);
+            } else ctx.fillText("ROOMi", 256, 112);
+          };
+          g1.save();
+          g1.strokeStyle = "#c4124f";
+          txt(g1, true);
+          g1.fillStyle = "#fff3f7";
+          txt(g1, false);
+          g1.globalCompositeOperation = "source-atop";
+          for (let i = -224; i < 512; i += 5) {
+            g1.strokeStyle = (i / 5) % 2 === 0 ? "rgba(255,255,255,0.0)" : "rgba(150,150,170,0.38)";
+            g1.lineWidth = 2;
+            g1.beginPath();
+            g1.moveTo(i, 224);
+            g1.lineTo(i + 224, 0);
+            g1.stroke();
+          }
+          g1.restore();
+          g2.save();
+          g2.fillStyle = "#fff";
+          g2.strokeStyle = "#888";
+          txt(g2, true);
+          txt(g2, false);
+          g2.restore();
         };
-        paint();
-        const tt = tex(c);
+        draw();
+        const tt = tex(cv.c);
+        const bump = track(new THREE.CanvasTexture(hv.c));
         document.fonts?.ready.then(() => {
-          paint();
+          draw();
           tt.needsUpdate = true;
+          bump.needsUpdate = true;
         });
         const ph = 1.12;
         const mark = add(
-          new THREE.PlaneGeometry(0.092, 0.0402),
-          track(new THREE.MeshBasicMaterial({ map: tt, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })),
+          new THREE.PlaneGeometry(0.098, 0.0428),
+          track(new THREE.MeshStandardMaterial({ map: tt, bumpMap: bump, bumpScale: 2.2, roughness: 0.55, transparent: true, alphaTest: 0.04, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })),
           0,
           R * SY * Math.cos(ph),
           R * Math.sin(ph) * 1.022,
@@ -1411,26 +1618,235 @@ export function buildRoom(scene: THREE.Scene): Room {
       cyl(0.0195, 0.0195, 0.006, foil, 0.38, 0.838, -0.18, g, 14);
     }
 
-    for (const [x, z, col, rot] of [[-0.48, 0.28, "#f71d64", 0.2], [-0.28, 0.34, "#c14ed4", -0.3]] as const) {
+    // ---- mini CD keyrings: a glossy acrylic charm printed with the logo, a holographic mini CD resting on it, a split ring and ball chain
+    const holo = (() => {
+      const { c, g } = canvas(256, 256);
+      const cg2 = (g as unknown as { createConicGradient?: (a: number, x: number, y: number) => CanvasGradient }).createConicGradient;
+      if (cg2) {
+        const gr = cg2.call(g, 0.4, 128, 128);
+        const stops = ["#ff8ad8", "#ffd48a", "#9affc8", "#8ad4ff", "#c79aff", "#ff8ad8"];
+        stops.forEach((col, i) => gr.addColorStop(i / (stops.length - 1), col));
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 256, 256);
+      } else {
+        g.fillStyle = "#d8c8ff";
+        g.fillRect(0, 0, 256, 256);
+      }
+      const rad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+      rad.addColorStop(0, "rgba(255,255,255,0.55)");
+      rad.addColorStop(0.3, "rgba(255,255,255,0)");
+      rad.addColorStop(1, "rgba(255,255,255,0.25)");
+      g.fillStyle = rad;
+      g.fillRect(0, 0, 256, 256);
+      g.strokeStyle = "rgba(255,255,255,0.2)";
+      for (let r = 40; r < 128; r += 6) {
+        g.beginPath();
+        g.arc(128, 128, r, 0, 7);
+        g.stroke();
+      }
+      return tex(c);
+    })();
+    const chain = std("#d8d6de", 0.28, 0.95);
+    for (const [x, z, col, rot, accent] of [[-0.48, 0.28, "#f71d64", 0.2, "#ffd9e6"], [-0.28, 0.34, "#c14ed4", -0.3, "#f3d9fb"]] as const) {
       const kg = new THREE.Group();
-      kg.position.set(x, 0.52, z);
+      kg.position.set(x, 0.4975, z);
       kg.rotation.y = rot;
-      tag(box(0.13, 0.008, 0.13, std(col, 0.6), 0, 0, 0, kg), "mini-cd-keyring");
-      tag(cyl(0.055, 0.055, 0.006, track(new THREE.MeshStandardMaterial({ color: "#cfd3ff", roughness: 0.12, metalness: 0.9, envMap: scene.environment, envMapIntensity: 2 })), 0, 0.008, 0, kg, 28), "mini-cd-keyring");
-      hitBox(0.3, 0.12, 0.2, 0.06, 0.03, 0, kg, "mini-cd-keyring");
+      const front = paint(256, 256, (c) => {
+        const gr = c.createLinearGradient(0, 0, 256, 256);
+        gr.addColorStop(0, col);
+        gr.addColorStop(1, accent);
+        c.fillStyle = gr;
+        c.fillRect(0, 0, 256, 256);
+        c.fillStyle = "rgba(255,255,255,0.16)";
+        for (let q = 0; q < 256; q += 16) for (let r = 0; r < 256; r += 16) c.fillRect(q + 6, r + 6, 3, 3);
+        c.fillStyle = "#fff";
+        c.font = '900 42px "Pretendard Variable", Arial Black, sans-serif';
+        c.textAlign = "left";
+        c.textBaseline = "alphabetic";
+        c.fillText("ROOMi", 22, 232);
+        c.font = '600 18px Arial, sans-serif';
+        c.fillText("MINI DISC", 24, 30);
+      }, 0.18);
+      const acrylic = track(new THREE.MeshPhysicalMaterial({ map: front.map, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.06, envMap: scene.environment, envMapIntensity: 1.2 }));
+      const slab = new THREE.Mesh(roundedSlab(0.13, 0.13, 0.0075, 0.02), acrylic);
+      slab.castShadow = true;
+      kg.add(slab);
+      tag(slab, "mini-cd-keyring");
+      // the disc: a thin ring with a holographic face, a clear hub and a rim
+      const discMat = track(new THREE.MeshStandardMaterial({ map: holo, roughness: 0.18, metalness: 0.85, envMap: scene.environment, envMapIntensity: 1.9, side: THREE.DoubleSide }));
+      const disc = new THREE.Mesh(new THREE.RingGeometry(0.0125, 0.0525, 56), discMat);
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.set(0.012, 0.0108, -0.004);
+      kg.add(disc);
+      tag(disc, "mini-cd-keyring");
+      const hub = tag(new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.0215, 0.0016, 36, 1, true), track(new THREE.MeshStandardMaterial({ color: "#e9e6f2", roughness: 0.25, metalness: 0.2, transparent: true, opacity: 0.8, side: THREE.DoubleSide }))), "mini-cd-keyring");
+      hub.position.set(0.012, 0.0112, -0.004);
+      kg.add(hub);
+      const rim = tag(new THREE.Mesh(new THREE.TorusGeometry(0.0525, 0.0011, 6, 56), chain), "mini-cd-keyring");
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set(0.012, 0.0107, -0.004);
+      kg.add(rim);
+      // split ring through the corner, then a ball chain trailing off across the table
+      const ring = tag(new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.0013, 8, 28), chain), "mini-cd-keyring");
+      ring.rotation.set(Math.PI / 2 - 0.5, 0, 0.3);
+      ring.position.set(-0.052, 0.0052, -0.052);
+      kg.add(ring);
+      for (let k = 0; k < 9; k++) {
+        const a2 = k * 0.62;
+        const ball = tag(new THREE.Mesh(new THREE.SphereGeometry(0.0021, 8, 6), chain), "mini-cd-keyring");
+        ball.position.set(-0.066 - k * 0.0072 + Math.sin(a2) * 0.002, 0.0022, -0.066 - k * 0.0072 + Math.cos(a2) * 0.0035);
+        kg.add(ball);
+      }
+      hitBox(0.3, 0.12, 0.2, 0.0, 0.03, 0, kg, "mini-cd-keyring");
       g.add(kg);
     }
+    // ---- embroidered letter patches: twill ground, satin-stitch letter, merrowed (thread-wrapped) border, felt back
     ["R", "O", "M", "i"].forEach((ch, i) => {
-      const { c, g: pg } = canvas(96, 72);
-      pg.fillStyle = ["#f71d64", "#c14ed4", "#ffb792", "#f0f0f0"][i];
-      pg.fillRect(0, 0, 96, 72);
-      pg.fillStyle = i === 3 ? "#111" : "#fff";
-      pg.font = '900 56px "Pretendard Variable", Arial Black, sans-serif';
-      pg.textAlign = "center";
-      pg.textBaseline = "middle";
-      pg.fillText(ch, 48, 40);
-      const pm = track(new THREE.MeshStandardMaterial({ map: tex(c), roughness: 0.9 }));
-      tag(box(0.12, 0.012, 0.09, pm, 0.02 + i * 0.14, 0.512, 0.34 - (i % 2) * 0.05, g), "letter-patch").rotation.y = 0.2 - i * 0.18;
+      const ground = ["#f2306f", "#b845cf", "#f6b99a", "#efecef"][i];
+      const thread = ["#ffe9f0", "#f6e3ff", "#7a2a55", "#c4124f"][i];
+      const edge = ["#ffd0e0", "#ecc0fa", "#fffaf2", "#7a2a55"][i];
+      const W_ = 256;
+      const H_ = 192;
+      const col = canvas(W_, H_);
+      const hgt = canvas(W_, H_);
+      const rr = (ctx: CanvasRenderingContext2D, inset: number, rad: number) => {
+        ctx.beginPath();
+        ctx.roundRect(inset, inset, W_ - inset * 2, H_ - inset * 2, rad);
+      };
+      const drawAll = () => {
+        const c = col.g;
+        const h = hgt.g;
+        // 1) the whole patch in border thread, then the stitches marching around the outline
+        c.save();
+        rr(c, 4, 26);
+        c.clip();
+        c.fillStyle = edge;
+        c.fillRect(0, 0, W_, H_);
+        h.save();
+        rr(h, 4, 26);
+        h.clip();
+        h.fillStyle = "#d0d0d0";
+        h.fillRect(0, 0, W_, H_);
+        const per = 2 * (W_ + H_);
+        for (let k = 0; k < per; k += 3) {
+          const u = k / per;
+          let x: number;
+          let y: number;
+          let nx: number;
+          let ny: number;
+          if (u < W_ / per) {
+            x = u * per;
+            y = 0;
+            nx = 0;
+            ny = 1;
+          } else if (u < (W_ + H_) / per) {
+            x = W_;
+            y = u * per - W_;
+            nx = -1;
+            ny = 0;
+          } else if (u < (2 * W_ + H_) / per) {
+            x = W_ - (u * per - W_ - H_);
+            y = H_;
+            nx = 0;
+            ny = -1;
+          } else {
+            x = 0;
+            y = H_ - (u * per - 2 * W_ - H_);
+            nx = 1;
+            ny = 0;
+          }
+          c.strokeStyle = k % 6 === 0 ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.14)";
+          c.lineWidth = 1.6;
+          c.beginPath();
+          c.moveTo(x, y);
+          c.lineTo(x + nx * 15, y + ny * 15);
+          c.stroke();
+          h.strokeStyle = k % 6 === 0 ? "#ffffff" : "#b0b0b0";
+          h.lineWidth = 1.6;
+          h.beginPath();
+          h.moveTo(x, y);
+          h.lineTo(x + nx * 15, y + ny * 15);
+          h.stroke();
+        }
+        c.restore();
+        h.restore();
+        // 2) the coloured twill ground inside the border
+        c.save();
+        rr(c, 19, 14);
+        c.clip();
+        c.fillStyle = ground;
+        c.fillRect(0, 0, W_, H_);
+        c.strokeStyle = "rgba(0,0,0,0.12)";
+        c.lineWidth = 1;
+        for (let q = -H_; q < W_; q += 4) {
+          c.beginPath();
+          c.moveTo(q, H_);
+          c.lineTo(q + H_, 0);
+          c.stroke();
+        }
+        c.restore();
+        h.save();
+        rr(h, 19, 14);
+        h.clip();
+        h.fillStyle = "#505050";
+        h.fillRect(0, 0, W_, H_);
+        h.restore();
+        // inner edge of the border, a little shadow line under the thread
+        rr(c, 19, 14);
+        c.strokeStyle = "rgba(0,0,0,0.28)";
+        c.lineWidth = 3;
+        c.stroke();
+        rr(h, 19, 14);
+        h.strokeStyle = "#202020";
+        h.lineWidth = 3;
+        h.stroke();
+        // the letter: filled with diagonal satin stitches
+        const fontPx = ch === "i" ? 150 : 160;
+        for (let t = 0; t < 2; t++) {
+          const ctx = t === 0 ? c : h;
+          ctx.save();
+          ctx.font = `900 ${fontPx}px "Pretendard Variable", "Arial Black", sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.lineJoin = "round";
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = t === 0 ? "rgba(0,0,0,0.30)" : "#101010";
+          ctx.strokeText(ch, W_ / 2, H_ / 2 + 8);
+          ctx.fillStyle = t === 0 ? thread : "#a0a0a0";
+          ctx.fillText(ch, W_ / 2, H_ / 2 + 8);
+          ctx.globalCompositeOperation = "source-atop";
+          for (let q = -H_; q < W_ + H_; q += 3) {
+            const odd = Math.round(q / 3) % 2 === 0;
+            ctx.strokeStyle = t === 0 ? (odd ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.16)") : odd ? "#ffffff" : "#8a8a8a";
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(q, H_ * 0.15);
+            ctx.lineTo(q + 50, H_ * 0.85);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      };
+      drawAll();
+      const mapT = tex(col.c);
+      const nrmT = normalFromHeight(hgt.c, 3.2);
+      document.fonts?.ready.then(() => {
+        col.g.clearRect(0, 0, W_, H_);
+        drawAll();
+        mapT.needsUpdate = true;
+        const t2 = normalFromHeight(hgt.c, 3.2);
+        nrmT.image = t2.image;
+        nrmT.needsUpdate = true;
+      });
+      const pm = track(new THREE.MeshStandardMaterial({ map: mapT, normalMap: nrmT, normalScale: new THREE.Vector2(1.1, 1.1), roughness: 0.78 }));
+      // the slab has two material groups: caps (top/bottom) take the embroidery, the rim takes plain thread
+      const rimMat = track(new THREE.MeshStandardMaterial({ color: edge, roughness: 0.85 }));
+      const patch = new THREE.Mesh(roundedSlab(0.12, 0.09, 0.0075, 0.014, 0.0016), [pm, rimMat]);
+      patch.position.set(0.02 + i * 0.14, 0.4975, 0.34 - (i % 2) * 0.05);
+      patch.castShadow = true;
+      patch.receiveShadow = true;
+      g.add(patch);
+      tag(patch, "letter-patch").rotation.y = 0.2 - i * 0.18;
     });
     hitBox(0.6, 0.1, 0.22, 0.2, 0.52, 0.32, g, "letter-patch");
     scene.add(g);
@@ -1764,7 +2180,7 @@ export function buildRoom(scene: THREE.Scene): Room {
       sN.set(0, 0, 0);
       sN[hitAxis] = -sign;
       const cosI = Math.max(0.12, Math.abs(tmp[hitAxis]));
-      const stretch = Math.min(5, 1 / cosI);
+      const stretch = Math.min(3, 1 / cosI);
       // in-plane axis along the beam's slant
       sP.copy(tmp).addScaledVector(sN, -tmp.dot(sN));
       if (sP.lengthSq() < 1e-6) sP.set(sN.y, sN.z, sN.x);
@@ -1815,6 +2231,13 @@ export function buildRoom(scene: THREE.Scene): Room {
 
   // ---------- Moods ----------
   let spotStrength = 0;
+  let beamTarget = 0.5;
+  let beamLevel = 0;
+  let stageIntensity = 0;
+  const stageOn = [true, true];
+  const stageC = [1, 1];
+  const hLights = [0, 0];
+  const sway = [0, 0];
   let lasers = false;
   let spin = false;
   let dustTarget = 0.45;
@@ -1829,10 +2252,13 @@ export function buildRoom(scene: THREE.Scene): Room {
   const pinkGlow = new THREE.Color("#f71d64");
   const setMood = (m: Mood) => {
     const v = {
-      off: { sun: 2.4, sunC: "#ffd2ac", hemi: 0.95, env: 0.45, ex: 0.95, stage: 0, neon: 0.7, spots: 0, a: "#555055", b: "#555055" },
-      soft: { sun: 0.9, sunC: "#ffb996", hemi: 0.6, env: 0.3, ex: 1.0, stage: 28, neon: 0.85, spots: 0.3, a: "#ffc8b0", b: "#ffc8b0" },
-      vivid: { sun: 0.2, sunC: "#c14ed4", hemi: 0.3, env: 0.16, ex: 1.05, stage: 95, neon: 1.0, spots: 0.8, a: "#f71d64", b: "#c14ed4" },
-      rave: { sun: 0, sunC: "#5a4cff", hemi: 0.1, env: 0.06, ex: 1.05, stage: 70, neon: 1.0, spots: 0.7, a: "#7a3dff", b: "#f71d64" },
+      day: { sun: 2.4, sunC: "#ffd2ac", hemi: 0.95, env: 0.45, ex: 0.95, stage: 5, neon: 0.7, spots: 0, a: "#ffffff", b: "#ffffff", dust: 0.15, beam: 0.1 },
+      house: { sun: 0.2, sunC: "#c14ed4", hemi: 0.3, env: 0.16, ex: 1.05, stage: 95, neon: 1.0, spots: 0.8, a: "#f71d64", b: "#c14ed4", dust: 0.65, beam: 0.5 },
+      listening: { sun: 0.25, sunC: "#ffb070", hemi: 0.4, env: 0.2, ex: 1.05, stage: 40, neon: 0.7, spots: 0.15, a: "#ffb36b", b: "#ff9a4d", dust: 0.5, beam: 0.25 },
+      dayparty: { sun: 1.6, sunC: "#ffe2b0", hemi: 0.8, env: 0.4, ex: 0.98, stage: 22, neon: 0.7, spots: 0.35, a: "#ffe07a", b: "#ffb86b", dust: 0.3, beam: 0.16 },
+      themed: { sun: 0.1, sunC: "#ff8a2a", hemi: 0.25, env: 0.14, ex: 1.05, stage: 100, neon: 1.0, spots: 0.8, a: "#ff7a1a", b: "#30e0a0", dust: 0.6, beam: 0.5 },
+      rave: { sun: 0, sunC: "#5a4cff", hemi: 0.1, env: 0.06, ex: 1.05, stage: 75, neon: 1.0, spots: 0.7, a: "#4a6bff", b: "#b13dff", dust: 0.75, beam: 0.42 },
+      after: { sun: 0.05, sunC: "#ff7a50", hemi: 0.22, env: 0.1, ex: 1.08, stage: 45, neon: 0.8, spots: 0.25, a: "#ff5a7a", b: "#ff9a5a", dust: 0.55, beam: 0.28 },
     }[m];
     sun.intensity = v.sun;
     sun.color.set(v.sunC);
@@ -1840,16 +2266,22 @@ export function buildRoom(scene: THREE.Scene): Room {
     scene.environmentIntensity = v.env;
     fixtures[0].color.set(v.a);
     fixtures[1].color.set(v.b);
-    const lensGain = m === "off" ? 1 : 1.1;
+    beamMats[0].uniforms.uColor.value.set(v.a);
+    beamMats[1].uniforms.uColor.value.set(v.b);
+    fixtureGlow[0].material.color.set(v.a);
+    fixtureGlow[1].material.color.set(v.b);
+    const lensGain = m === "day" ? 1 : 1.1;
     lensBase[0].set(v.a).multiplyScalar(lensGain);
     lensBase[1].set(v.b).multiplyScalar(lensGain);
     lensMats[0].color.copy(lensBase[0]);
     lensMats[1].color.copy(lensBase[1]);
-    for (const f of fixtures) f.intensity = v.stage;
+    stageIntensity = v.stage;
+    fixtures.forEach((f, i) => (f.intensity = v.stage * stageC[i]));
     for (const n of neons) n.mat.color.copy(n.base).multiplyScalar(n.gain * v.neon);
     spotStrength = v.spots;
     moduleHooks.setMood(m);
-    dustTarget = { off: 0.15, soft: 0.45, vivid: 0.65, rave: 0.75 }[m];
+    dustTarget = v.dust;
+    beamTarget = v.beam; // even in daylight a faint cone shows the spots are on
     lasers = m === "rave";
     for (const b of beams) b.visible = lasers;
     if (lasers) sweep(lastT);
@@ -1939,6 +2371,9 @@ export function buildRoom(scene: THREE.Scene): Room {
     toggleLamps() {
       moduleHooks.toggleLamps();
     },
+    toggleStage(i: number) {
+      stageOn[i] = !stageOn[i];
+    },
     setHover(id: string | null) {
       hoverId = id;
     },
@@ -2012,7 +2447,10 @@ export function buildRoom(scene: THREE.Scene): Room {
       if (spin) angle += dt * 0.55;
       ballMesh.rotation.y = angle;
       // hover feedback: the lens lights up, the ball brightens, both eased
-      hLight += ((hoverId === "stage-light" ? 1 : 0) - hLight) * Math.min(1, dt * 10);
+      for (let i = 0; i < 2; i++) {
+        hLights[i] += ((hoverId === `stage-light-${i}` ? 1 : 0) - hLights[i]) * Math.min(1, dt * 10);
+        stageC[i] += ((stageOn[i] ? 1 : 0) - stageC[i]) * Math.min(1, dt * 4);
+      }
       hBall += ((hoverId === "disco-ball" ? 1 : 0) - hBall) * Math.min(1, dt * 10);
       hDj += ((hoverId === "dj-controller" ? 1 : 0) - hDj) * Math.min(1, dt * 10);
       for (const m of djMats) {
@@ -2042,15 +2480,25 @@ export function buildRoom(scene: THREE.Scene): Room {
         w.mat.rotation = t * 0.25 + w.ph;
         w.sp.scale.setScalar(0.06 + 0.1 * v);
       }
-      lensMats.forEach((m, i) => m.color.copy(lensBase[i]).multiplyScalar(1 + hLight * 1.4));
+      lensMats.forEach((m, i) => m.color.copy(lensBase[i]).multiplyScalar((0.12 + 0.88 * stageC[i]) * (1 + hLights[i] * 1.4)));
       ballMat.emissiveIntensity = hBall * 0.12;
-      for (const f of fixtureGlow) (f.material as THREE.SpriteMaterial).opacity = hLight * 0.75;
+      beamLevel += (beamTarget - beamLevel) * Math.min(1, dt * 2.5);
+      fixtureGlow.forEach((f, i) => {
+        (f.material as THREE.SpriteMaterial).opacity = Math.min(1, (beamLevel * 1.1) * stageC[i] + hLights[i] * 0.6);
+        beamMats[i].uniforms.uI.value = beamLevel * stageC[i] * (0.85 + 0.15 * Math.sin(t * 1.6 + i * 2.1)) + hLights[i] * 0.3;
+      });
       (ballGlow.material as THREE.SpriteMaterial).opacity = hBall * 0.5;
       ballMat.envMapIntensity = 3.2 + hBall * 1.8;
       ball.position.y = 2.9 + Math.sin(t * 0.6) * 0.008;
       fixtures.forEach((f, i) => {
         // stage lights sway together with the spinning ball
-        f.target.position.x = spin ? Math.sin(angle * 2.2 + i * 3) * 1.3 : 0;
+        f.intensity = stageIntensity * stageC[i];
+        // a slow, eased sweep (it used to follow the ball's spin one-to-one, which looked jittery)
+        const want = spin ? Math.sin(angle * 0.9 + i * 3) * 0.9 : 0;
+        sway[i] += (want - sway[i]) * Math.min(1, dt * 2.2);
+        f.target.position.x = sway[i];
+        fixtureGroups[i].lookAt(sway[i], 0.9, -3.0);
+        fixtureGroups[i].rotateX(-Math.PI / 2);
       });
       if (lasers) sweep(t);
       throwSpots(angle, spotStrength);

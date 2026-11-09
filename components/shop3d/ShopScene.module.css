@@ -15,6 +15,18 @@
   display: block;
 }
 
+/* Soft glow: the bright parts of the picture (neon, lamp lenses, mirror ball) are isolated, blurred and laid back on with "screen".
+   It is done by the browser's compositor, so it costs the 3D scene nothing. */
+.bloom {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  backdrop-filter: brightness(0.95) contrast(2.4) saturate(1.3) blur(12px);
+  -webkit-backdrop-filter: brightness(0.95) contrast(2.4) saturate(1.3) blur(12px);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+
 /* Film grain, like the render was shot on stock. */
 .grain {
   position: absolute;
