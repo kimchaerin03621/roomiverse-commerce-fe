@@ -15,6 +15,17 @@ import styles from "./ShopScene.module.css";
 // Clicking either stage light steps through these: off -> soft -> vivid -> rave -> off.
 const ORDER: Mood[] = MOODS;
 
+/** Spots that pulse on screen so a first-time visitor sees what can be touched (id -> optional label). */
+const SPOTS: { id: string; label?: string }[] = [
+  { id: "mood", label: "Change the mood" },
+  { id: "dj-controller", label: "Play" },
+  { id: "cap" },
+  { id: "slogan-towel" },
+  { id: "bandana" },
+  { id: "mini-cd-keyring" },
+  { id: "letter-patch" },
+];
+
 const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;
 
 /**
@@ -42,6 +53,9 @@ export default function ShopScene() {
   const panelOpen = useRef(false);
   const tip = useRef<HTMLDivElement>(null);
   const bloomEl = useRef<HTMLDivElement>(null);
+  const spotEls = useRef<Record<string, HTMLSpanElement | null>>({});
+  const readyRef = useRef(false);
+  const [hint, setHint] = useState(true);
   // Loading gate: container doors stay shut until the textures are in, then swing open.
   const [ready, setReady] = useState(false);
   const [gone, setGone] = useState(false);
@@ -315,6 +329,7 @@ export default function ShopScene() {
     document.addEventListener("visibilitychange", onVis);
 
     const glow = new Map<THREE.Object3D, number>();
+    const spotV = new THREE.Vector3();
     // Automatic quality: if the frames keep coming slowly (an older laptop, integrated graphics), draw fewer pixels.
     // Quality drops only after a long, steady slowdown (a hiccup while loading or switching tabs does not count),
     // and climbs back once frames are fast again. If climbing back makes it slow again, that level becomes the limit.
@@ -385,6 +400,26 @@ export default function ShopScene() {
         m.emissiveIntensity = v * (0.5 + Math.sin(time * 5) * 0.1);
       }
       renderer.render(scene, camera);
+      // pulsing spots on whatever can be touched: followed on screen, hidden behind the gate, the panel and the viewer
+      {
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        const show = readyRef.current && !panelOpen.current;
+        for (const sp of SPOTS) {
+          const d = spotEls.current[sp.id];
+          if (!d) continue;
+          const pk = room.picks.find((q) => q.id === sp.id);
+          if (!pk || !show) {
+            d.style.opacity = "0";
+            continue;
+          }
+          pk.object.getWorldPosition(spotV);
+          spotV.project(camera);
+          const inside = spotV.z < 1 && Math.abs(spotV.x) < 0.96 && Math.abs(spotV.y) < 0.94;
+          d.style.opacity = inside && hover !== sp.id ? "1" : "0";
+          d.style.transform = `translate(${((spotV.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-spotV.y * 0.5 + 0.5) * h).toFixed(1)}px)`;
+        }
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -411,6 +446,14 @@ export default function ShopScene() {
       renderer.domElement.remove();
     };
   }, [open, router]);
+
+  useEffect(() => {
+    readyRef.current = ready;
+    if (!ready) return;
+    // the how-to line stays for a while, then gets out of the way
+    const id = window.setTimeout(() => setHint(false), 14000);
+    return () => window.clearTimeout(id);
+  }, [ready]);
 
   useEffect(() => {
     api.current?.setMood(mood);
@@ -441,6 +484,22 @@ export default function ShopScene() {
       <div ref={bloomEl} className={styles.bloom} aria-hidden="true" />
       <div className={styles.grain} aria-hidden="true" />
       <div className={styles.vignette} aria-hidden="true" />
+      <div className={styles.spots} aria-hidden="true">
+        {SPOTS.map((sp) => (
+          <span key={sp.id} ref={(n) => void (spotEls.current[sp.id] = n)} className={styles.spot}>
+            <i />
+            {sp.label && <b>{sp.label}</b>}
+          </span>
+        ))}
+      </div>
+      {ready && hint && !product && (
+        <p className={styles.hint}>
+          <span className={styles.mouseOnly}>Move to the edges to look around</span>
+          <span className={styles.touchOnly}>Drag to look around</span>
+          <span>Click the neon to change the party</span>
+          <span>Touch the dots to shop</span>
+        </p>
+      )}
 
       {!gone && <ContainerGate pct={pct} open={ready} onGone={() => setGone(true)} />}
 

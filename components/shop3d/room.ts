@@ -973,6 +973,14 @@ export function buildRoom(scene: THREE.Scene): Room {
     const SHELF_TOP = 0.78; // top of the baked LP shelf
     const SHELF_Z = -4.0 - g.position.z;
     hitBox(1.17, 0.5, 0.92, 0, SHELF_TOP + 0.25, SHELF_Z, g, "dj-controller");
+    // a soft key light on the controller alone (short reach): the room is lit for atmosphere, this makes the product the brightest thing in it
+    {
+      const key = new THREE.SpotLight("#fff1f5", 9, 2.4, 0.6, 0.9, 1.5);
+      key.position.set(0, SHELF_TOP + 1.45, SHELF_Z + 1.0);
+      key.target.position.set(0, SHELF_TOP + 0.2, SHELF_Z);
+      key.castShadow = false;
+      g.add(key, key.target);
+    }
     new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath("/draco/")).load("/models/dj-controller-lite.glb", (gltf) => {
       const model = gltf.scene;
       model.scale.setScalar(DJ_SCALE);
@@ -2389,7 +2397,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     spotStrength = v.spots;
     moduleHooks.setMood(m);
     dustTarget = v.dust;
-    beamTarget = v.beam; // even in daylight a faint cone shows the spots are on
+    beamTarget = v.beam * 0.8; // even in daylight a faint cone shows the spots are on
     lasers = m === "rave";
     for (const b of beams) b.visible = lasers;
     if (lasers) sweep(lastT);

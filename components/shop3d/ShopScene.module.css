@@ -24,7 +24,7 @@
   backdrop-filter: brightness(0.95) contrast(2.4) saturate(1.3) blur(12px);
   -webkit-backdrop-filter: brightness(0.95) contrast(2.4) saturate(1.3) blur(12px);
   mix-blend-mode: screen;
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
 /* Film grain, like the render was shot on stock. */
@@ -60,7 +60,8 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at 50% 50%, transparent 55%, rgb(16 11 16 / 0.45));
+  /* centred on the controller, so the eye settles there first */
+  background: radial-gradient(ellipse 64% 72% at 50% 60%, transparent 38%, rgb(16 11 16 / 0.58));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -349,4 +350,135 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.18s var(--ease-out);
+}
+
+/* ---------- First-visit guidance: how to look around, what to touch ---------- */
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(22px, 5.5vh, 54px);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 22px;
+  width: max-content;
+  max-width: min(94vw, 980px);
+  margin: 0;
+  padding: 11px 22px;
+  translate: -50% 0;
+  background: rgb(16 11 16 / 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  color: rgb(246 242 246 / 0.92);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hintIn 0.9s 0.4s both, hintOut 1s 12.8s forwards;
+}
+
+.hint span::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 9px;
+  border-radius: 50%;
+  background: #f71d64;
+  vertical-align: 1px;
+}
+
+@keyframes hintIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes hintOut {
+  to {
+    opacity: 0;
+  }
+}
+
+.spots {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.spot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.35s;
+  will-change: transform;
+}
+
+.spot i {
+  display: block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(247 29 100 / 0.85), 0 0 14px 4px rgb(247 29 100 / 0.55);
+  animation: spotPulse 2.2s ease-out infinite;
+}
+
+.spot b {
+  margin-top: -6px;
+  padding: 3px 9px;
+  background: rgb(16 11 16 / 0.62);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@keyframes spotPulse {
+  0% {
+    box-shadow: 0 0 0 3px rgb(247 29 100 / 0.85), 0 0 0 3px rgb(247 29 100 / 0.5);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 3px rgb(247 29 100 / 0.85), 0 0 0 20px rgb(247 29 100 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot i {
+    animation: none;
+  }
+  .hint {
+    animation: none;
+  }
+}
+
+.touchOnly {
+  display: none;
+}
+
+@media (hover: none) {
+  .mouseOnly {
+    display: none;
+  }
+  .touchOnly {
+    display: inline;
+  }
 }
