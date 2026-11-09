@@ -975,7 +975,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     hitBox(1.17, 0.5, 0.92, 0, SHELF_TOP + 0.25, SHELF_Z, g, "dj-controller");
     // a soft key light on the controller alone (short reach): the room is lit for atmosphere, this makes the product the brightest thing in it
     {
-      const key = new THREE.SpotLight("#fff1f5", 9, 2.4, 0.6, 0.9, 1.5);
+      const key = new THREE.SpotLight("#fff1f5", 5, 2.4, 0.6, 0.9, 1.5);
       key.position.set(0, SHELF_TOP + 1.45, SHELF_Z + 1.0);
       key.target.position.set(0, SHELF_TOP + 0.2, SHELF_Z);
       key.castShadow = false;
@@ -996,7 +996,7 @@ export function buildRoom(scene: THREE.Scene): Room {
         const mat = m.material as THREE.MeshStandardMaterial;
         mat.envMap = scene.environment;
         mat.side = THREE.DoubleSide;
-        // ROOMi "Black" edition: ink-black lacquer body, brushed silver, pink / purple / peach accents
+        // the real product's colours (from the product photo): warm cream case, charcoal body, brushed silver rims, mint pads, orange latch
         const paint = (hex: string, rough: number, metal = 0, env = 1) => {
           mat.map = null;
           mat.color.set(hex);
@@ -1006,35 +1006,31 @@ export function buildRoom(scene: THREE.Scene): Room {
         };
         switch (mat.name) {
           case "stone": // the case shell
-            paint("#5b2f86", 0.28, 0.12, 1.5);
+            paint("#c9c4b6", 0.5, 0.03, 0.8);
             break;
-          case "cover_band": // trim ring around the case
-            paint("#f71d64", 0.35, 0.2, 1.2);
+          case "cover_band": // trim rails
+            paint("#d2cdbf", 0.5, 0.05, 0.8);
             break;
           case "controller": // main body
-            paint("#2a2430", 0.38, 0.15, 1.2);
+            paint("#2b3131", 0.45, 0.1, 0.9);
             break;
           case "jog": // jog wheel tops
-            paint("#15111a", 0.25, 0.25, 1.4);
+            paint("#232828", 0.4, 0.15, 1);
             break;
           case "satin_metal": // wheel rims, rails, screws
-            paint("#c9c6d1", 0.28, 0.9, 1.7);
+            paint("#c5c8ca", 0.3, 0.9, 1.4);
             break;
           case "knob":
-            paint("#ffb792", 0.4, 0.1, 1);
+            paint("#2a2f2f", 0.5, 0.1, 0.9);
             break;
           case "slider":
-            paint("#c14ed4", 0.4, 0.15, 1);
+            paint("#7a7e7e", 0.45, 0.2, 1);
             break;
           case "pads":
-            paint("#ff5c93", 0.3, 0.05, 1);
-            mat.emissive = new THREE.Color("#f71d64");
-            mat.emissiveIntensity = 0.45;
+            paint("#6f9d90", 0.45, 0.05, 0.9);
             break;
           case "indicator":
-            paint("#ffb792", 0.5, 0, 1);
-            mat.emissive = new THREE.Color("#ffb792");
-            mat.emissiveIntensity = 0.8;
+            paint("#f07a38", 0.5, 0, 1);
             break;
           case "display":
             mat.roughness = 0.35;
@@ -1043,7 +1039,7 @@ export function buildRoom(scene: THREE.Scene): Room {
             mat.emissiveIntensity = 0.55;
             break;
           default:
-            mat.roughness = 0.42;
+            mat.roughness = 0.45;
         }
         mat.needsUpdate = true;
         mat.userData.baseEmissive = mat.emissive.clone();
