@@ -1261,9 +1261,41 @@ export function buildRoom(scene: THREE.Scene): Room {
         crownGeo.computeVertexNormals();
       }
       part(add(crownGeo, capMat, 0, 0, 0, cg)).scale.set(1, SY, 1);
-      // lining and sweatband, seen from below and where the brim lifts
-      add(new THREE.SphereGeometry(R * 0.97, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), track(new THREE.MeshStandardMaterial({ color: "#8c0f3a", roughness: 0.95, side: THREE.BackSide })), 0, -0.002, 0, cg, false).scale.set(1, SY, 1);
-      part(add(new THREE.CylinderGeometry(R * 0.93, R * 0.93, 0.024, 56, 1, true), track(new THREE.MeshStandardMaterial({ color: "#f3e9df", roughness: 0.9, side: THREE.DoubleSide })), 0, 0.011, 0, cg, false));
+      // the inside, seen from below: a lined shell with real thickness (the crown is 6 mm of cloth, the lining sits just under it),
+      // a flat rim joining the two, a cream sweatband and the stitched seams of the lining
+      {
+        const RL = R * 0.945;
+        const lin = fabric("#ffffff", [10, 10], 0.95);
+        lin.map = tex(
+          (() => {
+            const { c, g } = canvas(512, 256);
+            g.fillStyle = "#b3124d";
+            g.fillRect(0, 0, 512, 256);
+            g.strokeStyle = "rgba(60,0,25,0.3)";
+            g.lineWidth = 2;
+            for (let i = -256; i < 768; i += 6) {
+              g.beginPath();
+              g.moveTo(i, 0);
+              g.lineTo(i + 256, 256);
+              g.stroke();
+            }
+            g.fillStyle = "rgba(60,0,25,0.55)";
+            for (let k = 0; k < 6; k++) g.fillRect(((0.25 + (k + 0.5) / 6) % 1) * 512 - 2, 0, 4, 256);
+            return c;
+          })(),
+        );
+        lin.side = THREE.BackSide;
+        part(add(new THREE.SphereGeometry(RL, 56, 24, 0, Math.PI * 2, 0, Math.PI / 2), lin, 0, 0, 0, cg, false)).scale.set(1, SY, 1);
+        const rimM = std("#d9144f", 0.8);
+        rimM.side = THREE.DoubleSide;
+        const rimRing = part(add(new THREE.RingGeometry(RL, R * 1.0, 64, 1), rimM, 0, 0.0005, 0, cg, false));
+        rimRing.rotation.x = -Math.PI / 2;
+        const rimRing2 = part(add(new THREE.RingGeometry(RL, R * 1.0, 64, 1), rimM, 0, -0.0005, 0, cg, false));
+        rimRing2.rotation.x = Math.PI / 2;
+        part(add(new THREE.CylinderGeometry(R * 0.9, R * 0.9, 0.026, 56, 1, true), track(new THREE.MeshStandardMaterial({ color: "#f3e9df", roughness: 0.9, side: THREE.DoubleSide, map: null })), 0, 0.013, 0, cg, false));
+        const sbTop = part(add(new THREE.TorusGeometry(R * 0.9, 0.0016, 6, 56), std("#e3d6c9", 0.9), 0, 0.026, 0, cg, false));
+        sbTop.rotation.x = Math.PI / 2;
+      }
       // button
       part(add(new THREE.SphereGeometry(0.0125, 16, 10), capMat, 0, R * SY + 0.0015, 0, cg, false)).scale.y = 0.7;
       // brim: its back edge is sunk into the crown's front wall (so it cannot come loose), then it flares forward into a rounded visor
