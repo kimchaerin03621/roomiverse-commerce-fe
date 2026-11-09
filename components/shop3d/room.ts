@@ -1137,11 +1137,50 @@ export function buildRoom(scene: THREE.Scene): Room {
         t.repeat.set(9, 9);
         return t;
       })();
-      const capMat = fabric("#f6196a", [14, 14], 0.78);
-      capMat.map = twillTex;
+      // the crown's pattern is painted, not modelled: twill, six seams with topstitching, four eyelets. u runs round the crown (the front is u = 0.25), v from the rim (0) up to the button (1)
+      const crownTex = (() => {
+        const W = 1024;
+        const H = 512;
+        const { c, g } = canvas(W, H);
+        g.fillStyle = "#f6196a";
+        g.fillRect(0, 0, W, H);
+        g.strokeStyle = "rgba(120,20,60,0.28)";
+        g.lineWidth = 2;
+        for (let i = -H; i < W + H; i += 7) {
+          g.beginPath();
+          g.moveTo(i, 0);
+          g.lineTo(i + H, H);
+          g.stroke();
+        }
+        for (let k = 0; k < 6; k++) {
+          const x = (0.25 + k / 6) * W;
+          g.fillStyle = "rgba(150,10,60,0.55)";
+          g.fillRect(x - 3, 0, 6, H);
+          g.fillStyle = "rgba(255,225,235,0.9)";
+          for (const d of [-13, 13]) {
+            for (let y = 0; y < H; y += 12) g.fillRect(x + d - 1.5, y, 3, 7);
+          }
+        }
+        for (const th of [Math.PI / 2, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (3 * Math.PI) / 2]) {
+          const x = (0.25 + th / (2 * Math.PI)) * W;
+          const y = (1 - 0.605) * H;
+          g.fillStyle = "#a80f47";
+          g.beginPath();
+          g.ellipse(x, y, 11, 11, 0, 0, 7);
+          g.fill();
+          g.fillStyle = "#3a0518";
+          g.beginPath();
+          g.ellipse(x, y, 4, 4, 0, 0, 7);
+          g.fill();
+        }
+        const t = tex(c);
+        t.wrapS = THREE.RepeatWrapping;
+        return t;
+      })();
+      const capMat = fabric("#ffffff", [14, 14], 0.78);
+      capMat.map = crownTex;
       capMat.normalScale.set(1.25, 1.25);
       const seamMat = std("#d3135a", 0.85);
-      const light = std("#ffd9e6", 0.8);
       const part = <T extends THREE.Object3D>(o: T) => tag(o, "cap");
       // crown: each of the six panels bulges a little, the seams sink in between them
       const crownGeo = new THREE.SphereGeometry(R, 72, 36, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -1162,43 +1201,13 @@ export function buildRoom(scene: THREE.Scene): Room {
       part(add(crownGeo, capMat, 0, 0, 0, cg)).scale.set(1, SY, 1);
       // lining and sweatband, seen from below and where the brim lifts
       add(new THREE.SphereGeometry(R * 0.97, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), track(new THREE.MeshStandardMaterial({ color: "#8c0f3a", roughness: 0.95, side: THREE.BackSide })), 0, -0.002, 0, cg, false).scale.set(1, SY, 1);
-      part(add(new THREE.CylinderGeometry(R * 0.975, R * 0.975, 0.024, 56, 1, true), track(new THREE.MeshStandardMaterial({ color: "#f3e9df", roughness: 0.9, side: THREE.DoubleSide })), 0, 0.011, 0, cg, false));
-      // panel seams (meridians) with a darker, raised thread and a topstitch beside each
-      for (let k = 0; k < 6; k++) {
-        const th = (k * Math.PI) / 3;
-        const pts: THREE.Vector3[] = [];
-        for (let i = 0; i <= 20; i++) {
-          const ph = (i / 20) * (Math.PI / 2 - 0.02);
-          pts.push(new THREE.Vector3(R * 1.004 * Math.sin(ph) * Math.sin(th), R * SY * 1.004 * Math.cos(ph), R * 1.004 * Math.sin(ph) * Math.cos(th)));
-        }
-        part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 28, 0.0016, 5), seamMat, 0, 0, 0, cg, false));
-        for (const d of [-0.05, 0.05]) {
-          const sp: THREE.Vector3[] = [];
-          for (let i = 1; i <= 18; i++) {
-            const ph = (i / 20) * (Math.PI / 2 - 0.03);
-            const t2 = th + d / Math.max(Math.sin(ph), 0.25);
-            sp.push(new THREE.Vector3(R * 1.003 * Math.sin(ph) * Math.sin(t2), R * SY * 1.003 * Math.cos(ph), R * 1.003 * Math.sin(ph) * Math.cos(t2)));
-          }
-          part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp), 28, 0.0007, 4), light, 0, 0, 0, cg, false));
-        }
-      }
-      // eyelets on the four back and side panels
-      for (const th of [Math.PI / 2, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (3 * Math.PI) / 2]) {
-        const ph = 0.62;
-        const e = part(add(new THREE.SphereGeometry(0.0062, 10, 6), std("#a80f47", 0.6), R * 1.002 * Math.sin(ph) * Math.sin(th), R * SY * Math.cos(ph), R * 1.002 * Math.sin(ph) * Math.cos(th), cg, false));
-        e.scale.set(1, 1, 0.45);
-        e.lookAt(0, R * SY * Math.cos(ph) * 0.5, 0);
-      }
+      part(add(new THREE.CylinderGeometry(R * 0.93, R * 0.93, 0.024, 56, 1, true), track(new THREE.MeshStandardMaterial({ color: "#f3e9df", roughness: 0.9, side: THREE.DoubleSide })), 0, 0.011, 0, cg, false));
       // button
       part(add(new THREE.SphereGeometry(0.0125, 16, 10), capMat, 0, R * SY + 0.0015, 0, cg, false)).scale.y = 0.7;
-      // bottom binding showing at the rim
-      part(add(new THREE.TorusGeometry(R * 0.998, 0.0045, 8, 56), std("#f4f2f5", 0.7), 0, 0.002, 0, cg, false)).rotation.x = Math.PI / 2;
       // brim: its back edge hugs the crown's bottom circle, the front is a rounded visor, bent down at the sides
       {
         const XE = 0.108;
         const yb = (x: number) => Math.sqrt(Math.max(R * R - x * x, 0)) - 0.014;
-        const c1 = new THREE.CubicBezierCurve(new THREE.Vector2(-XE, yb(-XE)), new THREE.Vector2(-0.118, 0.175), new THREE.Vector2(-0.06, 0.226), new THREE.Vector2(0, 0.226));
-        const c2 = new THREE.CubicBezierCurve(new THREE.Vector2(0, 0.226), new THREE.Vector2(0.06, 0.226), new THREE.Vector2(0.118, 0.175), new THREE.Vector2(XE, yb(XE)));
         const sh = new THREE.Shape();
         sh.moveTo(-XE, yb(-XE));
         sh.bezierCurveTo(-0.118, 0.175, -0.06, 0.226, 0, 0.226);
@@ -1207,8 +1216,8 @@ export function buildRoom(scene: THREE.Scene): Room {
           const x = XE - (i / 24) * 2 * XE;
           sh.lineTo(x, yb(x));
         }
-        const bend = (x: number) => 2.1 * x * x;
-        const place = new THREE.Matrix4().makeTranslation(0, 0.017, 0).multiply(new THREE.Matrix4().makeRotationX(0.07));
+        const bend = (x: number) => 1.3 * x * x;
+        const place = new THREE.Matrix4().makeTranslation(0, 0.012, 0).multiply(new THREE.Matrix4().makeRotationX(0.07));
         // flat shape (x, y) -> world (x, bent height, y): a top sheet, a darker underside sheet 3.5mm below, and a rounded edge between
         const sheet = (dy: number) => {
           const gm = new THREE.ShapeGeometry(sh, 32);
@@ -1232,22 +1241,9 @@ export function buildRoom(scene: THREE.Scene): Room {
         part(add(sheet(-0.0035), underMat, 0, 0, 0, cg, false));
         const edge = sh.getPoints(60).map((p) => new THREE.Vector3(p.x, -bend(p.x) - 0.00175, p.y).applyMatrix4(place));
         part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge, true), 200, 0.0034, 8, true), seamMat, 0, 0, 0, cg, false));
-        const front = [...c1.getPoints(24), ...c2.getPoints(24).slice(1)].filter((p) => p.y > 0.13);
-        for (const k of [0.95, 0.88, 0.81]) {
-          const v = front.map((p) => {
-            const x = p.x * k;
-            const z = 0.118 + (p.y - 0.118) * k;
-            return new THREE.Vector3(x, -bend(x) + 0.0006, z).applyMatrix4(place);
-          });
-          part(add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v), 60, 0.0006, 4), light, 0, 0, 0, cg, false));
-        }
       }
-      // back strap with a small metal slide
-      {
-        const strap = part(add(new THREE.BoxGeometry(0.075, 0.018, 0.005), std("#f0eef2", 0.8), 0, 0.028, -R * 0.985, cg, false));
-        strap.rotation.x = 0.12;
-        part(add(new THREE.BoxGeometry(0.022, 0.02, 0.008), brass(), 0.012, 0.028, -R * 0.99, cg, false));
-      }
+      // back strap: a thin curved band that follows the crown (it used to be a flat box whose ends hung in the air)
+      part(add(new THREE.CylinderGeometry(R * 0.962 * 1.004, R * 0.962 * 1.004, 0.016, 24, 1, true, Math.PI - 0.62, 1.24), std("#e0145f", 0.8), 0, 0.03, 0, cg, false)).material.side = THREE.DoubleSide;
       // front mark on the crown, following its slope: satin-stitch embroidery (diagonal thread, raised outline)
       {
         const cv = canvas(512, 224);
@@ -1651,7 +1647,9 @@ export function buildRoom(scene: THREE.Scene): Room {
       const kg = new THREE.Group();
       kg.position.set(x, 0.4975, z);
       kg.rotation.y = rot;
-      const front = paint(256, 256, (c) => {
+      // the mini CD is printed into the charm itself, so nothing can overhang its edge
+      const front = paint(512, 512, (c) => {
+        c.scale(2, 2);
         const gr = c.createLinearGradient(0, 0, 256, 256);
         gr.addColorStop(0, col);
         gr.addColorStop(1, accent);
@@ -1659,33 +1657,58 @@ export function buildRoom(scene: THREE.Scene): Room {
         c.fillRect(0, 0, 256, 256);
         c.fillStyle = "rgba(255,255,255,0.16)";
         for (let q = 0; q < 256; q += 16) for (let r = 0; r < 256; r += 16) c.fillRect(q + 6, r + 6, 3, 3);
+        const cx = 134;
+        const cy = 126;
+        const R0 = 82;
+        c.save();
+        c.shadowColor = "rgba(60,0,40,0.35)";
+        c.shadowBlur = 8;
+        c.shadowOffsetY = 3;
+        c.beginPath();
+        c.arc(cx, cy, R0, 0, 7);
+        c.fillStyle = "#e9dcff";
+        c.fill();
+        c.restore();
+        c.save();
+        c.beginPath();
+        c.arc(cx, cy, R0 - 1, 0, 7);
+        c.clip();
+        c.drawImage(holo.image as CanvasImageSource, cx - R0, cy - R0, R0 * 2, R0 * 2);
+        c.restore();
+        c.strokeStyle = "rgba(255,255,255,0.75)";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(cx, cy, R0 - 1, 0, 7);
+        c.stroke();
+        c.strokeStyle = "rgba(255,255,255,0.28)";
+        c.lineWidth = 1;
+        for (const rr of [0.36, 0.5, 0.64, 0.78]) {
+          c.beginPath();
+          c.arc(cx, cy, R0 * rr, 0, 7);
+          c.stroke();
+        }
+        c.beginPath();
+        c.arc(cx, cy, R0 * 0.3, 0, 7);
+        c.fillStyle = accent;
+        c.globalAlpha = 0.85;
+        c.fill();
+        c.globalAlpha = 1;
+        c.strokeStyle = "rgba(255,255,255,0.9)";
+        c.lineWidth = 2;
+        c.stroke();
         c.fillStyle = "#fff";
-        c.font = '900 42px "Pretendard Variable", Arial Black, sans-serif';
+        c.font = '900 38px "Pretendard Variable", Arial Black, sans-serif';
         c.textAlign = "left";
         c.textBaseline = "alphabetic";
-        c.fillText("ROOMi", 22, 232);
-        c.font = '600 18px Arial, sans-serif';
-        c.fillText("MINI DISC", 24, 30);
+        c.fillText("ROOMi", 14, 244);
+        c.font = '600 15px Arial, sans-serif';
+        c.fillText("MINI DISC", 16, 26);
       }, 0.18);
       const acrylic = track(new THREE.MeshPhysicalMaterial({ map: front.map, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.06, envMap: scene.environment, envMapIntensity: 1.2 }));
       const slab = new THREE.Mesh(roundedSlab(0.13, 0.13, 0.0075, 0.02), acrylic);
       slab.castShadow = true;
       kg.add(slab);
       tag(slab, "mini-cd-keyring");
-      // the disc: a thin ring with a holographic face, a clear hub and a rim
-      const discMat = track(new THREE.MeshStandardMaterial({ map: holo, roughness: 0.18, metalness: 0.85, envMap: scene.environment, envMapIntensity: 1.9, side: THREE.DoubleSide }));
-      const disc = new THREE.Mesh(new THREE.RingGeometry(0.0125, 0.0525, 56), discMat);
-      disc.rotation.x = -Math.PI / 2;
-      disc.position.set(0.012, 0.0108, -0.004);
-      kg.add(disc);
-      tag(disc, "mini-cd-keyring");
-      const hub = tag(new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.0215, 0.0016, 36, 1, true), track(new THREE.MeshStandardMaterial({ color: "#e9e6f2", roughness: 0.25, metalness: 0.2, transparent: true, opacity: 0.8, side: THREE.DoubleSide }))), "mini-cd-keyring");
-      hub.position.set(0.012, 0.0112, -0.004);
-      kg.add(hub);
-      const rim = tag(new THREE.Mesh(new THREE.TorusGeometry(0.0525, 0.0011, 6, 56), chain), "mini-cd-keyring");
-      rim.rotation.x = Math.PI / 2;
-      rim.position.set(0.012, 0.0107, -0.004);
-      kg.add(rim);
       // split ring through the corner, then a ball chain trailing off across the table
       const ring = tag(new THREE.Mesh(new THREE.TorusGeometry(0.0125, 0.0013, 8, 28), chain), "mini-cd-keyring");
       ring.rotation.set(Math.PI / 2 - 0.5, 0, 0.3);
