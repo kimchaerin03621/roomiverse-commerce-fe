@@ -432,8 +432,37 @@ export function buildRoom(scene: THREE.Scene): Room {
   };
 
   const loader = new THREE.TextureLoader();
+  // Photo textures are loaded lazily: many of them only dress parts that end up hidden (the baked room replaces them), and
+  // downloading those cost several megabytes before the doors could open. A texture starts to download only once a visible mesh uses it.
+  const lazyUrls = new Map<THREE.Texture, string>();
+  const lazyLoad = (url: string) => {
+    const t = new THREE.Texture();
+    lazyUrls.set(t, url);
+    return t;
+  };
+  const activateLazy = () => {
+    const slots = ["map", "normalMap", "roughnessMap", "bumpMap", "emissiveMap"] as const;
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      for (const mat of mats) {
+        for (const k of slots) {
+          const t = (mat as unknown as Record<string, THREE.Texture | null>)[k];
+          const url = t && lazyUrls.get(t);
+          if (!t || !url) continue;
+          lazyUrls.delete(t);
+          loader.load(url, (loaded) => {
+            t.image = loaded.image;
+            t.needsUpdate = true;
+          });
+        }
+      }
+    });
+  };
   const file = (name: string, srgb: boolean, repeat: [number, number]) => {
-    const t = track(loader.load(`/shop3d/${name}`));
+    const t = track(lazyLoad(`/shop3d/${name}`));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.repeat.set(repeat[0], repeat[1]);
     t.anisotropy = 8;
@@ -636,7 +665,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     o: { repeat?: [number, number]; rot?: number; tint?: THREE.ColorRepresentation; normal?: number; rough?: number; sheen?: string; clearcoat?: number } = {},
   ) => {
     const mk = (suffix: string, srgb: boolean) => {
-      const t = track(loader.load(`/shop3d/mat/${base}_${suffix}.jpg`));
+      const t = track(lazyLoad(`/shop3d/mat/${base}_${suffix}.jpg`));
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       t.anisotropy = 8;
       t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -2473,6 +2502,7 @@ export function buildRoom(scene: THREE.Scene): Room {
     [ball],
     new Set<THREE.Material>([...neons.map((n) => n.mat), ...lensMats, ...djMats, ballMat, lapMat as unknown as THREE.Material]),
   );
+  activateLazy(); // only now is it known which photo textures a visible mesh really uses
 
   return {
     picks,

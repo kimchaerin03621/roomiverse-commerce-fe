@@ -13,7 +13,7 @@ import styles from "./HarborIntro.module.css";
 const MAX_X = 2.2; // % of stage width at depth 1
 const MAX_Y = 1.3; // % of stage height at depth 1
 const ENTER_MS = 700; // the doors cover the zoom well before the page changes
-const GATE_MS = 1000; // keep in step with ShopScene
+const GATE_MS = 700; // keep in step with ShopScene
 
 /*
  * Light shafts from a source deep inside the container, aimed out through the
@@ -97,11 +97,14 @@ export default function HarborIntro() {
   useEffect(() => {
     const warm = () => {
       router.prefetch("/shop/3d");
-      for (const f of ["carpet_color.jpg", "carpet_normal.jpg", "concrete_color.jpg", "concrete_wall_normal.jpg", "wall_color.jpg", "wall_normal.jpg", "fabric_normal.jpg", "sign.png", "mat/velvet_color.jpg", "mat/velvet_normal.jpg", "mat/walnut_dark_color.jpg", "mat/walnut_dark_normal.jpg", "mat/terrazzo_grey_color.jpg", "mat/terrazzo_color_color.jpg", "mat/wood_warm_color.jpg"]) {
+      // only what the room really draws: the baked room and its light images, the controller, the draco decoder, and the few photo textures left
+      for (const f of ["fabric_normal.jpg", "mat/velvet_color.jpg", "mat/velvet_normal.jpg", "mat/velvet_rough.jpg", "mat/wood_warm_color.jpg", "mat/wood_warm_normal.jpg", "mat/wood_warm_rough.jpg"]) {
         const img = new Image();
         img.src = `/shop3d/${f}`;
       }
-      void fetch("/models/dj-controller.glb");
+      for (const u of ["/models/room-back.glb", "/models/room-back-lm.json", "/models/lm_base.webp", "/models/lm_warm.webp", "/models/lm_party.webp", "/models/lm_stage.webp", "/models/dj-controller-lite.glb", "/draco/draco_wasm_wrapper.js", "/draco/draco_decoder.wasm"]) {
+        void fetch(u).catch(() => {});
+      }
     };
     const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
     if (w.requestIdleCallback) w.requestIdleCallback(warm);

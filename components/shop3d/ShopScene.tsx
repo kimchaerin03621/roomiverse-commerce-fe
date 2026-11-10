@@ -117,7 +117,7 @@ export default function ShopScene() {
     // The doors count up from the click in the intro (its time is passed through sessionStorage) and open once the
     // count has reached 100 and the room's main textures are in. Things that arrive later (the controller model, small
     // props) appear on their own once loaded; a short cap stops a slow request from holding the doors shut.
-    const GATE_MS = 1000;
+    const GATE_MS = 700;
     const manager = THREE.DefaultLoadingManager;
     const prev = { onProgress: manager.onProgress, onLoad: manager.onLoad };
     let loaded = false;
@@ -130,6 +130,7 @@ export default function ShopScene() {
     } catch {}
     manager.onLoad = () => {
       loaded = true;
+      performance.mark("room:loaded");
     };
     // the room is usable as soon as the first load wave is in, or after this long at the latest
     const failTimer = window.setTimeout(() => {
@@ -144,6 +145,7 @@ export default function ShopScene() {
         setPct(shown);
       }
       if (shown >= 100) {
+        performance.mark("room:gate-open");
         openTimer = window.setTimeout(() => setReady(true), 120);
         try {
           sessionStorage.removeItem("roomi:gate-t0");
@@ -154,7 +156,10 @@ export default function ShopScene() {
     };
     gateRaf = requestAnimationFrame(gateTick);
 
+    performance.mark("room:build-start");
     const room = buildRoom(scene);
+    performance.mark("room:build-end");
+    if (process.env.NODE_ENV !== "production") (window as unknown as { __scene?: THREE.Scene }).__scene = scene;
     const pickMeshes = room.picks.map((p) => p.object);
     const idOf = (o: THREE.Object3D) => room.picks.find((p) => p.object === o)?.id ?? null;
 
@@ -386,6 +391,7 @@ export default function ShopScene() {
         m.emissiveIntensity = v * (0.5 + Math.sin(time * 5) * 0.1);
       }
       renderer.render(scene, camera);
+      if (frames === 1) performance.mark("room:first-frame");
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
